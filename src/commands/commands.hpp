@@ -7,11 +7,10 @@ namespace vpdf::commands {
 
 void register_info(CLI::App& app);
 void register_merge(CLI::App& app);
-void register_sign(CLI::App& app);
-void register_verify(CLI::App& app);
+void register_split(CLI::App& app);
+void register_compress(CLI::App& app);
 void register_encrypt(CLI::App& app);
-void register_decrypt(CLI::App& app);
-void register_extract(CLI::App& app);
+void register_sign(CLI::App& app);
 
 } // namespace vpdf::commands
 

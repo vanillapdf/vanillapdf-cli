@@ -2,19 +2,20 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "commands/commands.hpp"
 #include "utils/error.hpp"
 
 namespace vpdf::commands {
 
-struct ExtractOptions {
+struct SplitOptions {
     std::string input;
     std::string output;
     std::vector<int> pages;
 };
 
-static int run_extract(const ExtractOptions& opts) {
+static int run_split(const SplitOptions& opts) {
     DocumentPtr in_document;
     check(Document_Open(opts.input.c_str(), in_document.put()), "Failed to open document");
 
@@ -36,7 +37,6 @@ static int run_extract(const ExtractOptions& opts) {
     PageTreePtr out_pages;
     check(Catalog_GetPages(out_catalog.get(), out_pages.put()), "Failed to get output page tree");
 
-    // Extract specified pages, or all pages if none specified
     if (opts.pages.empty()) {
         for (size_type i = 0; i < total_pages; ++i) {
             PageObjectPtr page;
@@ -45,7 +45,7 @@ static int run_extract(const ExtractOptions& opts) {
         }
     } else {
         for (int page_num : opts.pages) {
-            auto idx = static_cast<size_type>(page_num - 1); // 1-based to 0-based
+            auto idx = static_cast<size_type>(page_num - 1);
             if (idx >= total_pages) {
                 std::cerr << "Warning: page " << page_num << " out of range (1-" << total_pages << "), skipping\n";
                 continue;
@@ -57,15 +57,15 @@ static int run_extract(const ExtractOptions& opts) {
     }
 
     check(Document_Save(out_document.get(), opts.output.c_str()), "Failed to save output");
-    std::cerr << "Extracted to: " << opts.output << "\n";
+    std::cerr << "Split to: " << opts.output << "\n";
 
     return 0;
 }
 
-void register_extract(CLI::App& app) {
-    auto opts = std::make_shared<ExtractOptions>();
+void register_split(CLI::App& app) {
+    auto opts = std::make_shared<SplitOptions>();
 
-    auto* cmd = app.add_subcommand("extract", "Extract pages from a PDF document");
+    auto* cmd = app.add_subcommand("split", "Split pages from a PDF document");
     cmd->add_option("input", opts->input, "Input PDF file")
         ->required()
         ->check(CLI::ExistingFile);
@@ -75,7 +75,7 @@ void register_extract(CLI::App& app) {
 
     cmd->callback([opts]() {
         try {
-            std::exit(run_extract(*opts));
+            std::exit(run_split(*opts));
         } catch (const pdf_error& e) {
             std::cerr << "Error: " << e.what() << "\n";
             std::exit(1);

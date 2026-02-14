@@ -10,11 +10,10 @@ int main(int argc, char** argv) {
 
     vpdf::commands::register_info(app);
     vpdf::commands::register_merge(app);
-    vpdf::commands::register_sign(app);
-    vpdf::commands::register_verify(app);
+    vpdf::commands::register_split(app);
+    vpdf::commands::register_compress(app);
     vpdf::commands::register_encrypt(app);
-    vpdf::commands::register_decrypt(app);
-    vpdf::commands::register_extract(app);
+    vpdf::commands::register_sign(app);
 
     CLI11_PARSE(app, argc, argv);
     return 0;

@@ -8,41 +8,40 @@
 
 namespace vpdf::commands {
 
-struct DecryptOptions {
+struct CompressOptions {
     std::string input;
     std::string output;
-    std::string password;
 };
 
-static int run_decrypt(const DecryptOptions& opts) {
-    // TODO: implement decryption using vanillapdf standard security API
-    // 1. Open encrypted document with password
-    // 2. Save decrypted document
-
+static int run_compress(const CompressOptions& opts) {
     DocumentPtr document;
     check(Document_Open(opts.input.c_str(), document.put()), "Failed to open document");
 
-    check(Document_Save(document.get(), opts.output.c_str()), "Failed to save decrypted document");
-    std::cerr << "Decrypted: " << opts.output << "\n";
+    // TODO: implement compression using vanillapdf API
+    // 1. Re-encode streams with flate compression
+    // 2. Remove unused objects
+    // 3. Optimize cross-reference table
+    // 4. Save compressed document
+
+    check(Document_Save(document.get(), opts.output.c_str()), "Failed to save compressed document");
+    std::cerr << "Compressed: " << opts.output << "\n";
 
     return 0;
 }
 
-void register_decrypt(CLI::App& app) {
-    auto opts = std::make_shared<DecryptOptions>();
+void register_compress(CLI::App& app) {
+    auto opts = std::make_shared<CompressOptions>();
 
-    auto* cmd = app.add_subcommand("decrypt", "Decrypt a password-protected PDF document");
+    auto* cmd = app.add_subcommand("compress", "Compress and optimize a PDF document");
     cmd->add_option("input", opts->input, "Input PDF file")
         ->required()
         ->check(CLI::ExistingFile);
     cmd->add_option("-o,--output", opts->output, "Output PDF file")
         ->required();
-    cmd->add_option("-p,--password", opts->password, "Document password")
-        ->required();
 
     cmd->callback([opts]() {
         try {
-            std::exit(run_decrypt(*opts));
+            std::exit(run_compress(*opts));
         } catch (const pdf_error& e) {
             std::cerr << "Error: " << e.what() << "\n";
             std::exit(1);

@@ -22,11 +22,10 @@ add_executable(vanillapdf-cli
     src/main.cpp
     src/commands/info.cpp
     src/commands/merge.cpp
-    src/commands/sign.cpp
-    src/commands/verify.cpp
+    src/commands/split.cpp
+    src/commands/compress.cpp
     src/commands/encrypt.cpp
-    src/commands/decrypt.cpp
-    src/commands/extract.cpp
+    src/commands/sign.cpp
 )
 
 target_link_libraries(vanillapdf-cli PRIVATE
