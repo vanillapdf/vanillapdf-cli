@@ -1,0 +1,14 @@
+build/
+install/
+CMakeUserPresets.json
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.user
+compile_commands.json
+
+# OS
+.DS_Store
+Thumbs.db

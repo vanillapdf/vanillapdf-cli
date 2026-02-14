@@ -1,0 +1,21 @@
+{
+    "version": 6,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 20,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "default",
+            "binaryDir": "${sourceDir}/build",
+            "installDir": "${sourceDir}/install"
+        },
+        {
+            "name": "vcpkg",
+            "inherits": "default",
+            "displayName": "Development (vcpkg)",
+            "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+        }
+    ]
+}

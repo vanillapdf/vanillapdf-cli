@@ -1,0 +1,9 @@
+{
+    "name": "vanillapdf-cli",
+    "version": "0.1.0",
+    "description": "PDF manipulation command-line tool",
+    "dependencies": [
+        "cli11",
+        "vanillapdf"
+    ]
+}
