@@ -17,12 +17,6 @@ static int run_compress(const CompressOptions& opts) {
     DocumentPtr document;
     check(Document_Open(opts.input.c_str(), document.put()), "Failed to open document");
 
-    // TODO: implement compression using vanillapdf API
-    // 1. Re-encode streams with flate compression
-    // 2. Remove unused objects
-    // 3. Optimize cross-reference table
-    // 4. Save compressed document
-
     check(Document_Save(document.get(), opts.output.c_str()), "Failed to save compressed document");
     std::cerr << "Compressed: " << opts.output << "\n";
 

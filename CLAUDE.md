@@ -8,6 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 cmake --preset default      # configure (system packages)
 cmake --preset vcpkg         # configure (vcpkg, needs VCPKG_ROOT)
 cmake --build build          # build
+ctest --test-dir build -C Debug --output-on-failure  # test (Windows)
+ctest --test-dir build --output-on-failure            # test (Linux/Mac)
 cmake --install build        # install
 cpack --config build/CPackConfig.cmake  # package (deb/rpm)
 ```
@@ -23,7 +25,8 @@ C++17 CLI tool built on the [vanillapdf](https://github.com/vanillapdf/vanillapd
 **`src/utils/error.hpp`**: Core utilities shared across commands:
 - `vpdf::check(error_type, context)` — throws `vpdf::pdf_error` on non-success vanillapdf error codes
 - `vpdf::Handle<T, ReleaseFn>` — RAII wrapper for vanillapdf C API opaque handles (use `.get()`, `.put()` for out-params, `.release()`)
-- Type aliases: `DocumentPtr`, `CatalogPtr`, `PageTreePtr`, `PageObjectPtr`
+- `vpdf::to_string(StringObjectHandle*)` — extracts `std::string` from a vanillapdf string object
+- Type aliases for RAII handles: `DocumentPtr`, `CatalogPtr`, `PageTreePtr`, `PageObjectPtr`, `FilePtr`, `BufferPtr`, `DocumentInfoPtr`, `DocumentEncryptionSettingsPtr`, `DocumentSignatureSettingsPtr`, `PKCS12KeyPtr`, `SigningKeyPtr`, `InteractiveFormPtr`, `FieldCollectionPtr`, `FieldPtr`, `SignatureFieldPtr`, `DigitalSignaturePtr`, `DictionaryObjectPtr`, `NameObjectPtr`, `IntegerObjectPtr`, `ObjectPtr`, `StringObjectPtr`, `LiteralStringObjectPtr`
 
 ## Conventions
 

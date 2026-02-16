@@ -25,50 +25,19 @@ struct AttachmentRemoveOptions {
     std::string name;
 };
 
-static int run_attachment_add(const AttachmentAddOptions& opts) {
-    DocumentPtr document;
-    check(Document_Open(opts.input.c_str(), document.put()), "Failed to open document");
-
-    // TODO: implement attachment embedding using vanillapdf API
-    // 1. Read the file to attach
-    // 2. Create embedded file stream
-    // 3. Add to document name tree
-    // 4. Save
-
-    check(Document_Save(document.get(), opts.output.c_str()), "Failed to save document");
-    std::cerr << "Attached: " << opts.file << "\n";
-
-    return 0;
+static int run_attachment_add(const AttachmentAddOptions& /*opts*/) {
+    std::cerr << "Error: Attachment embedding is not yet supported by the vanillapdf library\n";
+    return 1;
 }
 
-static int run_attachment_list(const AttachmentListOptions& opts) {
-    DocumentPtr document;
-    check(Document_Open(opts.input.c_str(), document.put()), "Failed to open document");
-
-    // TODO: implement attachment listing using vanillapdf API
-    // 1. Get document name tree for embedded files
-    // 2. Enumerate entries
-    // 3. Print name, size, description for each
-
-    std::cout << "File: " << opts.input << "\n";
-    std::cout << "Attachment listing not yet implemented\n";
-
-    return 0;
+static int run_attachment_list(const AttachmentListOptions& /*opts*/) {
+    std::cerr << "Error: Attachment listing is not yet supported by the vanillapdf library\n";
+    return 1;
 }
 
-static int run_attachment_remove(const AttachmentRemoveOptions& opts) {
-    DocumentPtr document;
-    check(Document_Open(opts.input.c_str(), document.put()), "Failed to open document");
-
-    // TODO: implement attachment removal using vanillapdf API
-    // 1. Locate attachment by name in document name tree
-    // 2. Remove the entry
-    // 3. Save
-
-    check(Document_Save(document.get(), opts.output.c_str()), "Failed to save document");
-    std::cerr << "Removed attachment: " << opts.name << "\n";
-
-    return 0;
+static int run_attachment_remove(const AttachmentRemoveOptions& /*opts*/) {
+    std::cerr << "Error: Attachment removal is not yet supported by the vanillapdf library\n";
+    return 1;
 }
 
 void register_attachments(CLI::App& app) {

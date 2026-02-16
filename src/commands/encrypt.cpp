@@ -25,11 +25,33 @@ static int run_encrypt_add(const EncryptAddOptions& opts) {
     DocumentPtr document;
     check(Document_Open(opts.input.c_str(), document.put()), "Failed to open document");
 
-    // TODO: implement encryption using vanillapdf standard security API
-    // 1. Create encryption key from user/owner passwords
-    // 2. Apply encryption to document
-    // 3. Save encrypted document
+    DocumentEncryptionSettingsPtr settings;
+    check(DocumentEncryptionSettings_Create(settings.put()), "Failed to create encryption settings");
 
+    check(DocumentEncryptionSettings_SetAlgorithm(settings.get(), EncryptionAlgorithmType_RC4),
+          "Failed to set encryption algorithm");
+    check(DocumentEncryptionSettings_SetKeyLength(settings.get(), 128),
+          "Failed to set key length");
+
+    BufferPtr user_buf;
+    check(Buffer_CreateFromData(opts.user_password.c_str(),
+                                static_cast<size_type>(opts.user_password.size()),
+                                user_buf.put()),
+          "Failed to create user password buffer");
+    check(DocumentEncryptionSettings_SetUserPassword(settings.get(), user_buf.get()),
+          "Failed to set user password");
+
+    if (!opts.owner_password.empty()) {
+        BufferPtr owner_buf;
+        check(Buffer_CreateFromData(opts.owner_password.c_str(),
+                                    static_cast<size_type>(opts.owner_password.size()),
+                                    owner_buf.put()),
+              "Failed to create owner password buffer");
+        check(DocumentEncryptionSettings_SetOwnerPassword(settings.get(), owner_buf.get()),
+              "Failed to set owner password");
+    }
+
+    check(Document_AddEncryption(document.get(), settings.get()), "Failed to add encryption");
     check(Document_Save(document.get(), opts.output.c_str()), "Failed to save encrypted document");
     std::cerr << "Encrypted: " << opts.output << "\n";
 
@@ -37,14 +59,14 @@ static int run_encrypt_add(const EncryptAddOptions& opts) {
 }
 
 static int run_encrypt_remove(const EncryptRemoveOptions& opts) {
+    FilePtr file;
+    check(File_Open(opts.input.c_str(), file.put()), "Failed to open file");
+    check(File_SetEncryptionPassword(file.get(), opts.password.c_str()), "Failed to set password");
+    check(File_Initialize(file.get()), "Failed to initialize file");
+
     DocumentPtr document;
-    check(Document_Open(opts.input.c_str(), document.put()), "Failed to open document");
-
-    // TODO: implement decryption using vanillapdf standard security API
-    // 1. Authenticate with password
-    // 2. Remove encryption
-    // 3. Save decrypted document
-
+    check(Document_OpenFile(file.get(), document.put()), "Failed to open document");
+    check(Document_RemoveEncryption(document.get()), "Failed to remove encryption");
     check(Document_Save(document.get(), opts.output.c_str()), "Failed to save decrypted document");
     std::cerr << "Decrypted: " << opts.output << "\n";
 

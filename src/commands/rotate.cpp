@@ -16,6 +16,46 @@ struct RotateOptions {
     std::vector<int> pages;
 };
 
+static void rotate_page(PageTreeHandle* page_tree, size_type page_idx, int angle) {
+    PageObjectPtr page;
+    check(PageTree_GetPage(page_tree, page_idx, page.put()), "Failed to get page");
+
+    DictionaryObjectPtr dict;
+    check(PageObject_GetBaseObject(page.get(), dict.put()), "Failed to get page dictionary");
+
+    NameObjectPtr rotate_name;
+    check(NameObject_CreateFromDecodedString("Rotate", rotate_name.put()),
+          "Failed to create Rotate name");
+
+    int current_rotation = 0;
+
+    ObjectPtr existing;
+    boolean_type found = VANILLAPDF_RV_FALSE;
+    error_type find_err = DictionaryObject_TryFind(dict.get(), rotate_name.get(), &found, existing.put());
+    check(find_err, "Failed to search for Rotate entry");
+
+    if (found == VANILLAPDF_RV_TRUE) {
+        IntegerObjectPtr int_obj;
+        check(IntegerObject_FromObject(existing.get(), int_obj.put()), "Failed to read Rotate value");
+        bigint_type val = 0;
+        check(IntegerObject_GetIntegerValue(int_obj.get(), &val), "Failed to get integer value");
+        current_rotation = static_cast<int>(val);
+    }
+
+    int new_rotation = (current_rotation + angle) % 360;
+
+    IntegerObjectPtr new_int;
+    check(IntegerObject_Create(new_int.put()), "Failed to create integer object");
+    check(IntegerObject_SetIntegerValue(new_int.get(), static_cast<bigint_type>(new_rotation)),
+          "Failed to set rotation value");
+
+    ObjectPtr new_obj;
+    check(IntegerObject_ToObject(new_int.get(), new_obj.put()), "Failed to convert to object");
+
+    check(DictionaryObject_Insert(dict.get(), rotate_name.get(), new_obj.get(), VANILLAPDF_RV_TRUE),
+          "Failed to set Rotate entry");
+}
+
 static int run_rotate(const RotateOptions& opts) {
     DocumentPtr document;
     check(Document_Open(opts.input.c_str(), document.put()), "Failed to open document");
@@ -29,15 +69,21 @@ static int run_rotate(const RotateOptions& opts) {
     size_type total_pages = 0;
     check(PageTree_GetPageCount(page_tree.get(), &total_pages), "Failed to get page count");
 
-    // TODO: implement page rotation using vanillapdf API
-    // 1. For each target page, get the /Rotate entry
-    // 2. Add the requested angle (mod 360)
-    // 3. Set the new /Rotate value
-
     if (opts.pages.empty()) {
-        std::cerr << "Rotating all " << total_pages << " pages by " << opts.angle << " degrees\n";
+        for (size_type i = 0; i < total_pages; ++i) {
+            rotate_page(page_tree.get(), i, opts.angle);
+        }
+        std::cerr << "Rotated all " << total_pages << " pages by " << opts.angle << " degrees\n";
     } else {
-        std::cerr << "Rotating " << opts.pages.size() << " pages by " << opts.angle << " degrees\n";
+        for (int page_num : opts.pages) {
+            auto idx = static_cast<size_type>(page_num - 1);
+            if (idx >= total_pages) {
+                std::cerr << "Warning: page " << page_num << " out of range (1-" << total_pages << "), skipping\n";
+                continue;
+            }
+            rotate_page(page_tree.get(), idx, opts.angle);
+        }
+        std::cerr << "Rotated " << opts.pages.size() << " pages by " << opts.angle << " degrees\n";
     }
 
     check(Document_Save(document.get(), opts.output.c_str()), "Failed to save document");

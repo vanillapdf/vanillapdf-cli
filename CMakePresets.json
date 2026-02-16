@@ -16,6 +16,19 @@
             "inherits": "default",
             "displayName": "Development (vcpkg)",
             "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+        },
+        {
+            "name": "vcpkg-static",
+            "inherits": "vcpkg",
+            "displayName": "Standalone (vcpkg, static)",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            },
+            "cacheVariables": {
+                "VCPKG_TARGET_TRIPLET": "x64-windows-static"
+            }
         }
     ]
 }
