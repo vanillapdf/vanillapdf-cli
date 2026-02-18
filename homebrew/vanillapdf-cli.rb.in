@@ -1,0 +1,22 @@
+class VanillapdfCli < Formula
+  desc "PDF manipulation command-line tool"
+  homepage "https://vanillapdf.com"
+  url "https://github.com/vanillapdf/vanillapdf-cli/archive/refs/tags/@VANILLAPDF_CLI_RELEASE_TAG@.tar.gz"
+  sha256 "@VANILLAPDF_CLI_SHA256@"
+  license "Apache-2.0"
+  head "https://github.com/vanillapdf/vanillapdf-cli.git", branch: "@VANILLAPDF_CLI_HEAD_BRANCH@"
+
+  depends_on "cmake" => :build
+  depends_on "cli11"
+  depends_on "vanillapdf"
+
+  def install
+    system "cmake", "-S", ".", "-B", "build", *std_cmake_args
+    system "cmake", "--build", "build"
+    system "cmake", "--install", "build"
+  end
+
+  test do
+    assert_match version.to_s, shell_output("#{bin}/vanillapdf-cli --version")
+  end
+end

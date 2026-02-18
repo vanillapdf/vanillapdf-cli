@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 cmake --preset default      # configure (system packages)
 cmake --preset vcpkg         # configure (vcpkg, needs VCPKG_ROOT)
+cmake --preset vcpkg-dev     # configure (vcpkg + vanillapdf from source via FetchContent)
 cmake --build build          # build
 ctest --test-dir build -C Debug --output-on-failure  # test (Windows)
 ctest --test-dir build --output-on-failure            # test (Linux/Mac)
@@ -14,7 +15,13 @@ cmake --install build        # install
 cpack --config build/CPackConfig.cmake  # package (deb/rpm)
 ```
 
-Dependencies: `vanillapdf` (libvanillapdf) and `CLI11`, resolved via `find_package()`. For development, use the `vcpkg` preset with `VCPKG_ROOT` set.
+Dependencies: `vanillapdf` (libvanillapdf) and `CLI11`, resolved via `find_package()`. For development, use the `vcpkg` preset with `VCPKG_ROOT` set. Use the `vcpkg-dev` preset to build against vanillapdf from source (controlled by `VANILLAPDF_GIT_TAG`).
+
+## Packaging
+
+**deb/rpm**: CPack targets, system package dependencies declared in `CMakeLists.txt`.
+
+**Homebrew**: `homebrew/vanillapdf-cli.rb.in` is a template with `@PLACEHOLDER@` variables substituted at release time. The formula depends on `vanillapdf` (the Homebrew formula) and `cli11`; no extra cmake flags are needed since vcpkg is not activated (no toolchain file) and FetchContent is not triggered (`VANILLAPDF_GIT_TAG` defaults to empty).
 
 ## Architecture
 
