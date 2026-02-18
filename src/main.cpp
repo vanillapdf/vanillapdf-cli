@@ -24,30 +24,24 @@ static constexpr const char* copyright_notice =
     "https://www.apache.org/licenses/LICENSE-2.0\n";
 
 int main(int argc, char** argv) {
-    for (int i = 1; i < argc; ++i) {
-        if (std::string(argv[i]) == "--copyright") {
-            std::cout << copyright_notice;
-            return 0;
-        }
-    }
-
     Logging_SetSeverity(LoggingSeverity_Off);
 
     CLI::App app{"vanillapdf-cli - PDF manipulation tool"};
     app.set_version_flag("--version", VANILLAPDF_CLI_VERSION);
-    app.add_flag("--copyright", "Show copyright and license information");
+    app.add_flag_callback("--copyright", []() {
+        std::cout << copyright_notice;
+        std::exit(0);
+    }, "Show copyright and license information");
     app.require_subcommand(1);
     app.fallthrough();
 
-    std::string log_level;
-    app.add_option("--log-level", log_level, "Set library log level (off, critical, error, warning, info, debug, trace)")
-        ->check(CLI::IsMember({"off", "critical", "error", "warning", "info", "debug", "trace"}));
+    LoggingSeverity log_severity = LoggingSeverity_Off;
+    app.add_option("--log-level", log_severity, "Set library log level (off, critical, error, warning, info, debug, trace)")
+        ->transform(CLI::CheckedTransformer(log_levels));
     app.add_flag("-v,--verbose", vpdf::g_verbose, "Show detailed error information");
 
-    app.parse_complete_callback([&log_level]() {
-        if (!log_level.empty()) {
-            Logging_SetSeverity(log_levels.at(log_level));
-        }
+    app.parse_complete_callback([&log_severity]() {
+        Logging_SetSeverity(log_severity);
     });
 
     vpdf::commands::register_info(app);
