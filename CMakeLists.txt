@@ -14,7 +14,21 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(VANILLAPDF_CLI_ENABLE_TESTS "Build tests" ON)
 
 # Dependencies
-find_package(vanillapdf REQUIRED)
+set(VANILLAPDF_GIT_TAG "" CACHE STRING "Build vanillapdf from source at this git tag/branch (empty = use find_package)")
+
+if(VANILLAPDF_GIT_TAG)
+    include(FetchContent)
+    FetchContent_Declare(vanillapdf
+        GIT_REPOSITORY https://github.com/vanillapdf/vanillapdf.git
+        GIT_TAG        ${VANILLAPDF_GIT_TAG}
+        GIT_SUBMODULES ""
+    )
+    set(VANILLAPDF_INTERNAL_VCPKG OFF)
+    FetchContent_MakeAvailable(vanillapdf)
+else()
+    find_package(vanillapdf REQUIRED)
+endif()
+
 find_package(CLI11 REQUIRED)
 
 # Executable

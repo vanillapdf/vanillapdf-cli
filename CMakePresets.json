@@ -18,6 +18,14 @@
             "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
         },
         {
+            "name": "vcpkg-dev",
+            "inherits": "vcpkg",
+            "displayName": "Development (vcpkg, vanillapdf from source)",
+            "cacheVariables": {
+                "VANILLAPDF_GIT_TAG": "main"
+            }
+        },
+        {
             "name": "vcpkg-static",
             "inherits": "vcpkg",
             "displayName": "Standalone (vcpkg, static)",

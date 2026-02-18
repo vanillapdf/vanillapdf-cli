@@ -1,0 +1,40 @@
+name: Compatibility (vanillapdf main)
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'  # Every Monday at 06:00 UTC
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: sudo apt-get install -y --no-install-recommends cmake ninja-build
+
+      - name: Set up vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git "$VCPKG_ROOT"
+          "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
+
+      - name: Cache vcpkg packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/vcpkg/installed
+          key: vcpkg-ubuntu-${{ hashFiles('vcpkg.json') }}
+          restore-keys: vcpkg-ubuntu-
+
+      - name: Configure
+        run: cmake --preset vcpkg-dev
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
