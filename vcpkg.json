@@ -1,9 +1,38 @@
 {
     "name": "vanillapdf-cli",
-    "version": "0.1.0",
     "description": "PDF manipulation command-line tool",
-    "dependencies": [
-        "cli11",
-        "vanillapdf"
-    ]
+    "features": {
+        "cli11": {
+            "description": "CLI argument parsing library",
+            "dependencies": ["cli11"]
+        },
+        "encryption": {
+            "description": "OpenSSL for vanillapdf encryption support",
+            "dependencies": ["openssl"]
+        },
+        "jpeg": {
+            "description": "libjpeg-turbo for vanillapdf JPEG support",
+            "dependencies": ["libjpeg-turbo"]
+        },
+        "jpeg2000": {
+            "description": "OpenJPEG for vanillapdf JPEG-2000 support",
+            "dependencies": ["openjpeg"]
+        },
+        "zlib": {
+            "description": "zlib for vanillapdf compression support",
+            "dependencies": ["zlib"]
+        },
+        "spdlog": {
+            "description": "spdlog for vanillapdf logging",
+            "dependencies": ["spdlog"]
+        },
+        "fmt": {
+            "description": "fmt for vanillapdf string formatting",
+            "dependencies": ["fmt"]
+        },
+        "nlohmann-json": {
+            "description": "nlohmann-json for vanillapdf JSON configuration",
+            "dependencies": ["nlohmann-json"]
+        }
+    }
 }

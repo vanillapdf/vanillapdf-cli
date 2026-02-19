@@ -11,7 +11,13 @@ class VanillapdfCli < Formula
   depends_on "vanillapdf"
 
   def install
-    system "cmake", "-S", ".", "-B", "build", *std_cmake_args
+    args = %w[
+      -DVANILLAPDF_CLI_INTERNAL_VCPKG=OFF
+      -DVANILLAPDF_CLI_EXTERNAL_VANILLAPDF=ON
+      -DVANILLAPDF_CLI_EXTERNAL_CLI11=ON
+    ]
+
+    system "cmake", "-S", ".", "-B", "build", *args, *std_cmake_args
     system "cmake", "--build", "build"
     system "cmake", "--install", "build"
   end

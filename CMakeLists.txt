@@ -1,5 +1,25 @@
 cmake_minimum_required(VERSION 3.20)
 
+# Dependency management options — declared before project() so that
+# vcpkg_init.cmake can configure the toolchain before compiler detection.
+#
+# VANILLAPDF_CLI_INTERNAL_VCPKG: When ON (default), vcpkg provides cli11 and
+#   vanillapdf's transitive dependencies. If CMAKE_TOOLCHAIN_FILE is not set,
+#   vcpkg is bootstrapped automatically. Set to OFF when all dependencies are
+#   provided by the system (deb/rpm/brew/snap).
+option(VANILLAPDF_CLI_INTERNAL_VCPKG "Enable internal vcpkg dependency management" ON)
+
+# VANILLAPDF_CLI_EXTERNAL_VANILLAPDF: When OFF (default), vanillapdf is built
+#   from source via FetchContent at the version in VANILLAPDF_GIT_TAG.
+#   Set to ON to use a pre-installed vanillapdf (system packages, brew, etc.).
+option(VANILLAPDF_CLI_EXTERNAL_VANILLAPDF "Use vanillapdf from the system or a package manager" OFF)
+
+# VANILLAPDF_CLI_EXTERNAL_CLI11: When OFF (default), CLI11 is provided by vcpkg.
+#   Set to ON to use CLI11 from the system or a package manager.
+option(VANILLAPDF_CLI_EXTERNAL_CLI11 "Use CLI11 from the system or a package manager" OFF)
+
+include(cmake/vcpkg_init.cmake)
+
 project(vanillapdf-cli
     VERSION 0.1.0
     DESCRIPTION "PDF manipulation command-line tool"
@@ -13,10 +33,12 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(VANILLAPDF_CLI_ENABLE_TESTS "Build tests" ON)
 
-# Dependencies
-set(VANILLAPDF_GIT_TAG "" CACHE STRING "Build vanillapdf from source at this git tag/branch (empty = use find_package)")
-
-if(VANILLAPDF_GIT_TAG)
+# vanillapdf
+if(VANILLAPDF_CLI_EXTERNAL_VANILLAPDF)
+    find_package(vanillapdf REQUIRED)
+else()
+    set(VANILLAPDF_GIT_TAG "main" CACHE STRING
+        "vanillapdf git tag/branch to build from source via FetchContent")
     include(FetchContent)
     FetchContent_Declare(vanillapdf
         GIT_REPOSITORY https://github.com/vanillapdf/vanillapdf.git
@@ -25,10 +47,9 @@ if(VANILLAPDF_GIT_TAG)
     )
     set(VANILLAPDF_INTERNAL_VCPKG OFF)
     FetchContent_MakeAvailable(vanillapdf)
-else()
-    find_package(vanillapdf REQUIRED)
 endif()
 
+# CLI11
 find_package(CLI11 REQUIRED)
 
 # Executable

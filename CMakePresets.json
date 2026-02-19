@@ -8,19 +8,32 @@
     "configurePresets": [
         {
             "name": "default",
+            "displayName": "System packages (deb/rpm/brew)",
+            "description": "All dependencies provided by the system. No vcpkg, no FetchContent.",
             "binaryDir": "${sourceDir}/build",
-            "installDir": "${sourceDir}/install"
+            "installDir": "${sourceDir}/install",
+            "cacheVariables": {
+                "VANILLAPDF_CLI_INTERNAL_VCPKG": "OFF",
+                "VANILLAPDF_CLI_EXTERNAL_VANILLAPDF": "ON",
+                "VANILLAPDF_CLI_EXTERNAL_CLI11": "ON"
+            }
         },
         {
             "name": "vcpkg",
-            "inherits": "default",
-            "displayName": "Development (vcpkg)",
-            "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+            "displayName": "Development (existing vcpkg installation)",
+            "description": "Uses an existing vcpkg installation via VCPKG_ROOT. vanillapdf is built from source.",
+            "binaryDir": "${sourceDir}/build",
+            "installDir": "${sourceDir}/install",
+            "cacheVariables": {
+                "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+            }
         },
         {
             "name": "vcpkg-dev",
-            "inherits": "vcpkg",
-            "displayName": "Development (vcpkg, vanillapdf from source)",
+            "displayName": "Development (auto-vcpkg, vanillapdf main branch)",
+            "description": "Auto-bootstraps vcpkg and builds vanillapdf from the main branch. No VCPKG_ROOT required.",
+            "binaryDir": "${sourceDir}/build",
+            "installDir": "${sourceDir}/install",
             "cacheVariables": {
                 "VANILLAPDF_GIT_TAG": "main"
             }
