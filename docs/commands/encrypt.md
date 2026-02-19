@@ -35,7 +35,7 @@ vanillapdf-cli encrypt add report.pdf -o report-secured.pdf \
 ```
 
 !!! note
-    Encryption uses RC4 with a 128-bit key.
+    Encryption uses AES with a 128-bit key.
 
 ---
 

@@ -196,7 +196,7 @@ vanillapdf-cli encrypt add <input> -o <output> -p <user-password> [--owner-passw
 vanillapdf-cli encrypt remove <input> -o <output> -p <password>
 ```
 
-Encrypts using RC4 128-bit. The user password is required to open the file; the owner password (optional) is required to edit it.
+Encrypts using AES-128. The user password is required to open the file; the owner password (optional) is required to edit it.
 
 ```sh
 # Add encryption

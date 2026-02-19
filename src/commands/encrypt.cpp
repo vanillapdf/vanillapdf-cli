@@ -28,7 +28,7 @@ static int run_encrypt_add(const EncryptAddOptions& opts) {
     DocumentEncryptionSettingsPtr settings;
     check(DocumentEncryptionSettings_Create(settings.put()), "Failed to create encryption settings");
 
-    check(DocumentEncryptionSettings_SetAlgorithm(settings.get(), EncryptionAlgorithmType_RC4),
+    check(DocumentEncryptionSettings_SetAlgorithm(settings.get(), EncryptionAlgorithmType_AES),
           "Failed to set encryption algorithm");
     check(DocumentEncryptionSettings_SetKeyLength(settings.get(), 128),
           "Failed to set key length");
