@@ -37,6 +37,7 @@ find_package(CLI11 REQUIRED)
 # Executable
 add_executable(vanillapdf-cli
     src/main.cpp
+    src/commands/commands.hpp
     src/commands/info.cpp
     src/commands/merge.cpp
     src/commands/split.cpp
@@ -44,6 +45,7 @@ add_executable(vanillapdf-cli
     src/commands/compress.cpp
     src/commands/encrypt.cpp
     src/commands/sign.cpp
+    src/utils/error.hpp
 )
 
 target_link_libraries(vanillapdf-cli PRIVATE
