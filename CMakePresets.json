@@ -41,14 +41,32 @@
         {
             "name": "vcpkg-static",
             "inherits": "vcpkg",
-            "displayName": "Standalone (vcpkg, static)",
+            "displayName": "Windows static (/MT — fully self-contained)",
+            "description": "Static libs + static CRT (/MT). No runtime DLL dependencies whatsoever.",
             "condition": {
                 "type": "equals",
                 "lhs": "${hostSystemName}",
                 "rhs": "Windows"
             },
             "cacheVariables": {
-                "VCPKG_TARGET_TRIPLET": "x64-windows-static"
+                "VCPKG_TARGET_TRIPLET": "x64-windows-static",
+                "BUILD_SHARED_LIBS": "OFF",
+                "VANILLAPDF_USE_STATIC_CRT": "ON"
+            }
+        },
+        {
+            "name": "vcpkg-static-md",
+            "inherits": "vcpkg",
+            "displayName": "Windows static-md (/MD — static libs, dynamic CRT)",
+            "description": "Static libs + dynamic MSVC runtime (/MD). All dependencies linked in; only UCRT/MSVCRT required at runtime.",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            },
+            "cacheVariables": {
+                "VCPKG_TARGET_TRIPLET": "x64-windows-static-md",
+                "BUILD_SHARED_LIBS": "OFF"
             }
         }
     ]

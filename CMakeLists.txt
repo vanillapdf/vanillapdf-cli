@@ -62,7 +62,6 @@ add_executable(vanillapdf-cli
     src/commands/compress.cpp
     src/commands/encrypt.cpp
     src/commands/sign.cpp
-    src/commands/attachments.cpp
 )
 
 target_link_libraries(vanillapdf-cli PRIVATE
@@ -81,6 +80,19 @@ target_compile_definitions(vanillapdf-cli PRIVATE
 set_target_properties(vanillapdf-cli PROPERTIES
     OUTPUT_NAME vanillapdf-cli
 )
+
+# On Windows with a shared vanillapdf build, copy the DLL and its runtime
+# dependencies (OpenSSL, zlib, etc.) alongside the executable so tests and
+# direct invocation work without adding the vanillapdf output directory to PATH.
+# Not needed for static builds (BUILD_SHARED_LIBS=OFF) or system installs.
+if(WIN32 AND NOT VANILLAPDF_CLI_EXTERNAL_VANILLAPDF AND BUILD_SHARED_LIBS)
+    add_custom_command(TARGET vanillapdf-cli POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "$<TARGET_FILE_DIR:vanillapdf::vanillapdf>"
+            "$<TARGET_FILE_DIR:vanillapdf-cli>"
+        COMMENT "Copying vanillapdf runtime dependencies"
+    )
+endif()
 
 # Install
 include(GNUInstallDirs)

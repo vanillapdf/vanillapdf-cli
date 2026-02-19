@@ -87,12 +87,20 @@ using DocumentSignatureSettingsPtr = Handle<DocumentSignatureSettingsHandle, Doc
 using DocumentEncryptionSettingsPtr = Handle<DocumentEncryptionSettingsHandle, DocumentEncryptionSettings_Release>;
 
 // Syntax handles
+using HexadecimalStringObjectPtr = Handle<HexadecimalStringObjectHandle, HexadecimalStringObject_Release>;
 using DictionaryObjectPtr = Handle<DictionaryObjectHandle, DictionaryObject_Release>;
 using NameObjectPtr = Handle<NameObjectHandle, NameObject_Release>;
 using IntegerObjectPtr = Handle<IntegerObjectHandle, IntegerObject_Release>;
 using ObjectPtr = Handle<ObjectHandle, Object_Release>;
 using StringObjectPtr = Handle<StringObjectHandle, StringObject_Release>;
 using LiteralStringObjectPtr = Handle<LiteralStringObjectHandle, LiteralStringObject_Release>;
+
+// Signature verification handles
+using ByteRangeCollectionPtr = Handle<ByteRangeCollectionHandle, ByteRangeCollection_Release>;
+using ByteRangePtr = Handle<ByteRangeHandle, ByteRange_Release>;
+using TrustedCertificateStorePtr = Handle<TrustedCertificateStoreHandle, TrustedCertificateStore_Release>;
+using SignatureVerificationSettingsPtr = Handle<SignatureVerificationSettingsHandle, SignatureVerificationSettings_Release>;
+using SignatureVerificationResultPtr = Handle<SignatureVerificationResultHandle, SignatureVerificationResult_Release>;
 
 // Utility handles
 using FilePtr = Handle<FileHandle, File_Release>;

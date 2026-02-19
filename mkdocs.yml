@@ -43,7 +43,6 @@ nav:
       - compress: commands/compress.md
       - encrypt: commands/encrypt.md
       - sign: commands/sign.md
-      - attachments: commands/attachments.md
   - Building from Source: building.md
 
 markdown_extensions:

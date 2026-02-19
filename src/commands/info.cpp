@@ -1,5 +1,6 @@
 #include <CLI/CLI.hpp>
 #include <iostream>
+#include <map>
 #include <memory>
 
 #include "commands/commands.hpp"
@@ -41,7 +42,24 @@ static int run_info(const InfoOptions& opts) {
     size_type page_count = 0;
     check(PageTree_GetPageCount(page_tree.get(), &page_count), "Failed to get page count");
 
+    // PDF version from file header
+    FilePtr file;
+    PDFVersion pdf_version = PDFVersion_Undefined;
+    if (File_Open(opts.input.c_str(), file.put()) == VANILLAPDF_ERROR_SUCCESS) {
+        File_GetVersion(file.get(), &pdf_version);
+    }
+
+    static const std::map<PDFVersion, const char*> version_names = {
+        {PDFVersion_10, "1.0"}, {PDFVersion_11, "1.1"}, {PDFVersion_12, "1.2"},
+        {PDFVersion_13, "1.3"}, {PDFVersion_14, "1.4"}, {PDFVersion_15, "1.5"},
+        {PDFVersion_16, "1.6"}, {PDFVersion_17, "1.7"}, {PDFVersion_20, "2.0"},
+    };
+
     std::cout << "File: " << opts.input << "\n";
+    auto ver_it = version_names.find(pdf_version);
+    if (ver_it != version_names.end()) {
+        std::cout << "PDF Version: " << ver_it->second << "\n";
+    }
     std::cout << "Pages: " << page_count << "\n";
 
     DocumentInfoPtr info;

@@ -19,7 +19,6 @@ add_test(NAME cli_rotate_help COMMAND vanillapdf-cli rotate --help)
 add_test(NAME cli_compress_help COMMAND vanillapdf-cli compress --help)
 add_test(NAME cli_encrypt_help COMMAND vanillapdf-cli encrypt --help)
 add_test(NAME cli_sign_help COMMAND vanillapdf-cli sign --help)
-add_test(NAME cli_attachments_help COMMAND vanillapdf-cli attachments --help)
 
 # Nested subcommand help
 add_test(NAME cli_encrypt_add_help COMMAND vanillapdf-cli encrypt add --help)
@@ -27,9 +26,7 @@ add_test(NAME cli_encrypt_remove_help COMMAND vanillapdf-cli encrypt remove --he
 add_test(NAME cli_sign_add_help COMMAND vanillapdf-cli sign add --help)
 add_test(NAME cli_sign_list_help COMMAND vanillapdf-cli sign list --help)
 add_test(NAME cli_sign_remove_help COMMAND vanillapdf-cli sign remove --help)
-add_test(NAME cli_attachments_add_help COMMAND vanillapdf-cli attachments add --help)
-add_test(NAME cli_attachments_list_help COMMAND vanillapdf-cli attachments list --help)
-add_test(NAME cli_attachments_remove_help COMMAND vanillapdf-cli attachments remove --help)
+add_test(NAME cli_sign_verify_help COMMAND vanillapdf-cli sign verify --help)
 
 # Missing required arguments should fail
 add_test(NAME cli_info_no_input COMMAND vanillapdf-cli info)
@@ -68,14 +65,5 @@ set_tests_properties(cli_sign_list_no_args PROPERTIES WILL_FAIL TRUE)
 add_test(NAME cli_sign_remove_no_args COMMAND vanillapdf-cli sign remove)
 set_tests_properties(cli_sign_remove_no_args PROPERTIES WILL_FAIL TRUE)
 
-add_test(NAME cli_attachments_no_subcommand COMMAND vanillapdf-cli attachments)
-set_tests_properties(cli_attachments_no_subcommand PROPERTIES WILL_FAIL TRUE)
-
-add_test(NAME cli_attachments_add_no_args COMMAND vanillapdf-cli attachments add)
-set_tests_properties(cli_attachments_add_no_args PROPERTIES WILL_FAIL TRUE)
-
-add_test(NAME cli_attachments_list_no_args COMMAND vanillapdf-cli attachments list)
-set_tests_properties(cli_attachments_list_no_args PROPERTIES WILL_FAIL TRUE)
-
-add_test(NAME cli_attachments_remove_no_args COMMAND vanillapdf-cli attachments remove)
-set_tests_properties(cli_attachments_remove_no_args PROPERTIES WILL_FAIL TRUE)
+add_test(NAME cli_sign_verify_no_args COMMAND vanillapdf-cli sign verify)
+set_tests_properties(cli_sign_verify_no_args PROPERTIES WILL_FAIL TRUE)

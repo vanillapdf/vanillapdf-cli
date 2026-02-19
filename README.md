@@ -69,6 +69,9 @@ vanillapdf-cli sign add document.pdf -o signed.pdf -k cert.p12 -p "key-password"
 
 # List signatures in a PDF
 vanillapdf-cli sign list signed.pdf
+
+# Verify signatures (uses system trust store)
+vanillapdf-cli sign verify signed.pdf
 ```
 
 ---
@@ -84,10 +87,10 @@ vanillapdf-cli sign list signed.pdf
 | [`compress`](#compress) | Compress and optimise a PDF |
 | [`encrypt add`](#encrypt-add--remove) | Add password encryption |
 | [`encrypt remove`](#encrypt-add--remove) | Remove encryption |
-| [`sign add`](#sign-add--list--remove) | Apply a digital signature |
-| [`sign list`](#sign-add--list--remove) | List signatures |
-| [`sign remove`](#sign-add--list--remove) | Remove signatures *(not yet supported)* |
-| [`attachments`](#attachments) | Embed / list / remove file attachments *(not yet supported)* |
+| [`sign add`](#sign-add--list--remove--verify) | Apply a digital signature |
+| [`sign list`](#sign-add--list--remove--verify) | List signatures |
+| [`sign remove`](#sign-add--list--remove--verify) | Remove signatures *(not yet supported)* |
+| [`sign verify`](#sign-add--list--remove--verify) | Verify signatures |
 
 ### Global flags
 
@@ -208,11 +211,12 @@ vanillapdf-cli encrypt remove protected.pdf -o unlocked.pdf -p "open123"
 
 ---
 
-### `sign add` / `list` / `remove`
+### `sign add` / `list` / `remove` / `verify`
 
 ```
-vanillapdf-cli sign add  <input> -o <output> -k <key.p12> [-p <password>]
-vanillapdf-cli sign list <input>
+vanillapdf-cli sign add    <input> -o <output> -k <key.p12> [-p <password>]
+vanillapdf-cli sign list   <input>
+vanillapdf-cli sign verify <input> [-c <cert.pem>] [--json]
 vanillapdf-cli sign remove <input> -o <output>   # not yet supported
 ```
 
@@ -224,6 +228,9 @@ vanillapdf-cli sign add contract.pdf -o contract-signed.pdf -k my-cert.p12 -p "p
 
 # Inspect signatures
 vanillapdf-cli sign list contract-signed.pdf
+
+# Verify signatures
+vanillapdf-cli sign verify contract-signed.pdf
 ```
 
 ```
@@ -234,18 +241,6 @@ Signature #1:
     Location: London, UK
 Signatures: 1
 ```
-
----
-
-### `attachments`
-
-```
-vanillapdf-cli attachments add    <input> -o <output> -f <file> [-d <description>]
-vanillapdf-cli attachments list   <input>
-vanillapdf-cli attachments remove <input> -o <output> -n <name>
-```
-
-> Attachment support is not yet implemented in the vanillapdf library.
 
 ---
 
