@@ -1,0 +1,59 @@
+site_name: vanillapdf-cli
+site_url: https://vanillapdf-cli.readthedocs.io
+site_description: Command-line tool for PDF manipulation built on vanillapdf
+site_author: Vanilla.PDF Labs
+
+repo_name: vanillapdf/vanillapdf-cli
+repo_url: https://github.com/vanillapdf/vanillapdf-cli
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep purple
+      accent: deep purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: deep purple
+      accent: deep purple
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - content.action.edit
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Commands:
+      - Overview: commands/index.md
+      - info: commands/info.md
+      - merge: commands/merge.md
+      - split: commands/split.md
+      - rotate: commands/rotate.md
+      - compress: commands/compress.md
+      - encrypt: commands/encrypt.md
+      - sign: commands/sign.md
+      - attachments: commands/attachments.md
+  - Building from Source: building.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - attr_list
