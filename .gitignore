@@ -2,6 +2,9 @@ build/
 install/
 CMakeUserPresets.json
 
+# Claude Code
+.claude/settings.local.json
+
 # IDE
 .vs/
 .vscode/
