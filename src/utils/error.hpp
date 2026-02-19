@@ -78,6 +78,7 @@ using CatalogPtr = Handle<CatalogHandle, Catalog_Release>;
 using PageTreePtr = Handle<PageTreeHandle, PageTree_Release>;
 using PageObjectPtr = Handle<PageObjectHandle, PageObject_Release>;
 using DocumentInfoPtr = Handle<DocumentInfoHandle, DocumentInfo_Release>;
+using PdfTextStringPtr = Handle<PdfTextStringHandle, PdfTextString_Release>;
 using InteractiveFormPtr = Handle<InteractiveFormHandle, InteractiveForm_Release>;
 using FieldCollectionPtr = Handle<FieldCollectionHandle, FieldCollection_Release>;
 using FieldPtr = Handle<FieldHandle, Field_Release>;
@@ -120,6 +121,24 @@ inline std::string last_error_message() {
 inline std::string to_string(StringObjectHandle* handle) {
     BufferPtr buf;
     check(StringObject_GetValue(handle, buf.put()));
+    string_type data = nullptr;
+    size_type size = 0;
+    check(Buffer_GetData(buf.get(), &data, &size));
+    return std::string(data, size);
+}
+
+inline std::string to_string_utf8(PdfTextStringHandle* handle) {
+    BufferPtr buf;
+    check(PdfTextString_GetStringUtf8(handle, buf.put()));
+    string_type data = nullptr;
+    size_type size = 0;
+    check(Buffer_GetData(buf.get(), &data, &size));
+    return std::string(data, size);
+}
+
+inline std::string to_string_utf16(PdfTextStringHandle* handle) {
+    BufferPtr buf;
+    check(PdfTextString_GetStringUtf16(handle, buf.put()));
     string_type data = nullptr;
     size_type size = 0;
     check(Buffer_GetData(buf.get(), &data, &size));
