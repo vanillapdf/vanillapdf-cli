@@ -136,14 +136,6 @@ inline std::string to_string_utf8(PdfTextStringHandle* handle) {
     return std::string(data, size);
 }
 
-inline std::string to_string_utf16(PdfTextStringHandle* handle) {
-    BufferPtr buf;
-    check(PdfTextString_GetStringUtf16(handle, buf.put()));
-    string_type data = nullptr;
-    size_type size = 0;
-    check(Buffer_GetData(buf.get(), &data, &size));
-    return std::string(data, size);
-}
 
 } // namespace vpdf
 

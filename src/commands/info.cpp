@@ -1,6 +1,5 @@
 #include <CLI/CLI.hpp>
 #include <iostream>
-#include <map>
 #include <memory>
 
 #include "commands/commands.hpp"
@@ -8,34 +7,16 @@
 
 namespace vpdf::commands {
 
-enum class TextEncoding { Utf8, Utf16 };
-
 struct InfoOptions {
     std::string input;
-    TextEncoding encoding = TextEncoding::Utf8;
 };
 
 static void print_optional_field(DocumentInfoHandle* info, const char* label,
-                                 error_type (*getter)(DocumentInfoHandle*, PdfTextStringHandle**),
-                                 TextEncoding encoding) {
+                                 error_type (*getter)(DocumentInfoHandle*, PdfTextStringHandle**)) {
     PdfTextStringPtr text;
     error_type err = getter(info, text.put());
     if (err == VANILLAPDF_ERROR_SUCCESS) {
-        std::cout << label << ": ";
-        switch (encoding) {
-            case TextEncoding::Utf8:
-                std::cout << to_string_utf8(text.get());
-                break;
-            case TextEncoding::Utf16: {
-                // UTF-16BE with BOM — write raw bytes for binary-safe piping
-                auto raw = to_string_utf16(text.get());
-                std::cout.write(raw.data(), static_cast<std::streamsize>(raw.size()));
-                break;
-            }
-            default:
-                throw std::logic_error("Unhandled TextEncoding value");
-        }
-        std::cout << "\n";
+        std::cout << label << ": " << to_string_utf8(text.get()) << "\n";
     } else if (err == VANILLAPDF_ERROR_OBJECT_MISSING) {
         std::cout << label << ": N/A\n";
     } else {
@@ -82,12 +63,12 @@ static int run_info(const InfoOptions& opts) {
 
     DocumentInfoPtr info;
     if (Document_GetDocumentInfo(document.get(), info.put()) == VANILLAPDF_ERROR_SUCCESS) {
-        print_optional_field(info.get(), "Title",    DocumentInfo_GetTitleText,    opts.encoding);
-        print_optional_field(info.get(), "Author",   DocumentInfo_GetAuthorText,   opts.encoding);
-        print_optional_field(info.get(), "Subject",  DocumentInfo_GetSubjectText,  opts.encoding);
-        print_optional_field(info.get(), "Keywords", DocumentInfo_GetKeywordsText, opts.encoding);
-        print_optional_field(info.get(), "Creator",  DocumentInfo_GetCreatorText,  opts.encoding);
-        print_optional_field(info.get(), "Producer", DocumentInfo_GetProducerText, opts.encoding);
+        print_optional_field(info.get(), "Title",    DocumentInfo_GetTitleText);
+        print_optional_field(info.get(), "Author",   DocumentInfo_GetAuthorText);
+        print_optional_field(info.get(), "Subject",  DocumentInfo_GetSubjectText);
+        print_optional_field(info.get(), "Keywords", DocumentInfo_GetKeywordsText);
+        print_optional_field(info.get(), "Creator",  DocumentInfo_GetCreatorText);
+        print_optional_field(info.get(), "Producer", DocumentInfo_GetProducerText);
     }
 
     return 0;
@@ -96,18 +77,10 @@ static int run_info(const InfoOptions& opts) {
 void register_info(CLI::App& app) {
     auto opts = std::make_shared<InfoOptions>();
 
-    static const std::map<std::string, TextEncoding> encoding_map = {
-        {"utf8",  TextEncoding::Utf8},
-        {"utf16", TextEncoding::Utf16},
-    };
-
     auto* cmd = app.add_subcommand("info", "Display PDF file information");
     cmd->add_option("input", opts->input, "Input PDF file")
         ->required()
         ->check(CLI::ExistingFile);
-    cmd->add_option("--encoding", opts->encoding,
-                    "Output encoding for text fields: utf8 (default) or utf16 (UTF-16BE with BOM)")
-        ->transform(CLI::CheckedTransformer(encoding_map, CLI::ignore_case));
 
     cmd->callback([opts]() {
         try {
