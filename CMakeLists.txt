@@ -9,11 +9,6 @@ cmake_minimum_required(VERSION 3.20)
 #   provided by the system (deb/rpm/brew/snap).
 option(VANILLAPDF_CLI_INTERNAL_VCPKG "Enable internal vcpkg dependency management" ON)
 
-# VANILLAPDF_CLI_EXTERNAL_VANILLAPDF: When OFF (default), vanillapdf is built
-#   from source via FetchContent at the version in VANILLAPDF_GIT_TAG.
-#   Set to ON to use a pre-installed vanillapdf (system packages, brew, etc.).
-option(VANILLAPDF_CLI_EXTERNAL_VANILLAPDF "Use vanillapdf from the system or a package manager" OFF)
-
 # VANILLAPDF_CLI_EXTERNAL_CLI11: When OFF (default), CLI11 is provided by vcpkg.
 #   Set to ON to use CLI11 from the system or a package manager.
 option(VANILLAPDF_CLI_EXTERNAL_CLI11 "Use CLI11 from the system or a package manager" OFF)
@@ -34,20 +29,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(VANILLAPDF_CLI_ENABLE_TESTS "Build tests" ON)
 
 # vanillapdf
-if(VANILLAPDF_CLI_EXTERNAL_VANILLAPDF)
-    find_package(vanillapdf REQUIRED)
-else()
-    set(VANILLAPDF_GIT_TAG "main" CACHE STRING
-        "vanillapdf git tag/branch to build from source via FetchContent")
-    include(FetchContent)
-    FetchContent_Declare(vanillapdf
-        GIT_REPOSITORY https://github.com/vanillapdf/vanillapdf.git
-        GIT_TAG        ${VANILLAPDF_GIT_TAG}
-        GIT_SUBMODULES ""
-    )
-    set(VANILLAPDF_INTERNAL_VCPKG OFF)
-    FetchContent_MakeAvailable(vanillapdf)
-endif()
+include(cmake/vanillapdf.cmake)
 
 # CLI11
 find_package(CLI11 REQUIRED)

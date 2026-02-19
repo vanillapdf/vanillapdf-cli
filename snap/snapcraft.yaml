@@ -1,0 +1,61 @@
+name: vanillapdf-cli
+base: core24
+adopt-info: vanillapdf-cli
+
+summary: PDF manipulation command-line tool
+description: |
+  Command-line tool for PDF operations: merge, split, rotate, compress,
+  encrypt, and sign PDF files.
+
+  To process files on removable media, connect the removable-media plug:
+    sudo snap connect vanillapdf-cli:removable-media
+
+license: Apache-2.0
+grade: stable
+confinement: strict
+
+apps:
+  vanillapdf-cli:
+    command: bin/vanillapdf-cli
+    plugs:
+      - home
+      - removable-media
+
+parts:
+  vanillapdf-cli:
+    plugin: nil
+    source: .
+    build-packages:
+      - cmake
+      - ninja-build
+      - g++
+      - git
+      - libcli11-dev
+      - libssl-dev
+      - zlib1g-dev
+      - libjpeg-dev
+      - libopenjp2-7-dev
+      - libspdlog-dev
+      - libfmt-dev
+      - nlohmann-json3-dev
+    # Runtime shared libraries (Ubuntu 24.04 / core24).
+    # libjpeg-turbo8t64 reflects the t64 ABI rename in Noble; adjust if needed.
+    stage-packages:
+      - libssl3
+      - zlib1g
+      - libjpeg-turbo8t64
+      - libopenjp2-7
+      - libspdlog1.12
+      - libfmt10
+    override-pull: |
+      craftctl default
+      craftctl set-version \
+        "$(git -C "$SNAPCRAFT_PART_SRC" describe --tags --abbrev=0 2>/dev/null \
+           | sed 's/^v//' || echo '0.1.0')"
+    override-build: |
+      cd "$SNAPCRAFT_PART_SRC"
+      cmake --preset snap -DCMAKE_INSTALL_PREFIX="$SNAPCRAFT_PART_INSTALL"
+      cmake --build build
+      cmake --install build --prefix "$SNAPCRAFT_PART_INSTALL"
+    stage:
+      - bin/vanillapdf-cli

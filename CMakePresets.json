@@ -39,6 +39,21 @@
             }
         },
         {
+            "name": "snap",
+            "displayName": "Snap package (Ubuntu 24.04 system packages)",
+            "description": "System packages for CLI11 and vanillapdf dependencies. vanillapdf built from source at the pinned tag in cmake/vanillapdf.cmake.",
+            "binaryDir": "${sourceDir}/build",
+            "installDir": "${sourceDir}/install",
+            "cacheVariables": {
+                "VANILLAPDF_CLI_INTERNAL_VCPKG": "OFF",
+                "VANILLAPDF_CLI_EXTERNAL_VANILLAPDF": "OFF",
+                "VANILLAPDF_CLI_EXTERNAL_CLI11": "ON",
+                "BUILD_SHARED_LIBS": "OFF",
+                "CMAKE_BUILD_TYPE": "Release",
+                "VANILLAPDF_CLI_ENABLE_TESTS": "OFF"
+            }
+        },
+        {
             "name": "vcpkg-static",
             "inherits": "vcpkg",
             "displayName": "Windows static (/MT — fully self-contained)",
