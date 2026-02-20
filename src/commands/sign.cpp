@@ -15,6 +15,7 @@ struct SignAddOptions {
     std::string output;
     std::string key_file;
     std::string password;
+    std::string digest = "sha256";
 };
 
 struct SignListOptions {
@@ -36,6 +37,21 @@ struct SignVerifyOptions {
     bool json_output = false;
 };
 
+static MessageDigestAlgorithmType parse_digest(const std::string& name) {
+    if (name == "md2")       return MessageDigestAlgorithmType_MD2;
+    if (name == "md4")       return MessageDigestAlgorithmType_MD4;
+    if (name == "md5")       return MessageDigestAlgorithmType_MD5;
+    if (name == "sha1")      return MessageDigestAlgorithmType_SHA1;
+    if (name == "sha224")    return MessageDigestAlgorithmType_SHA224;
+    if (name == "sha256")    return MessageDigestAlgorithmType_SHA256;
+    if (name == "sha384")    return MessageDigestAlgorithmType_SHA384;
+    if (name == "sha512")    return MessageDigestAlgorithmType_SHA512;
+    if (name == "mdc2")      return MessageDigestAlgorithmType_MDC2;
+    if (name == "ripemd160") return MessageDigestAlgorithmType_RIPEMD160;
+    if (name == "whirlpool") return MessageDigestAlgorithmType_WHIRLPOOL;
+    throw pdf_error(VANILLAPDF_ERROR_PARAMETER_VALUE, "Unknown digest: " + name);
+}
+
 static int run_sign_add(const SignAddOptions& opts) {
     DocumentPtr document;
     check(Document_Open(opts.input.c_str(), document.put()), "Failed to open document");
@@ -49,6 +65,8 @@ static int run_sign_add(const SignAddOptions& opts) {
 
     DocumentSignatureSettingsPtr settings;
     check(DocumentSignatureSettings_Create(settings.put()), "Failed to create signature settings");
+    check(DocumentSignatureSettings_SetDigest(settings.get(), parse_digest(opts.digest)),
+          "Failed to set digest algorithm");
     check(DocumentSignatureSettings_SetSigningKey(settings.get(), signing_key.get()),
           "Failed to set signing key");
 
@@ -408,6 +426,10 @@ void register_sign(CLI::App& app) {
         ->required()
         ->check(CLI::ExistingFile);
     add_cmd->add_option("-p,--password", add_opts->password, "Key file password");
+    add_cmd->add_option("--digest", add_opts->digest,
+                        "Message digest algorithm for signing (default: sha256)")
+        ->check(CLI::IsMember({"md2", "md4", "md5", "sha1", "sha224", "sha256",
+                                "sha384", "sha512", "mdc2", "ripemd160", "whirlpool"}));
 
     add_cmd->callback([add_opts]() {
         try {
