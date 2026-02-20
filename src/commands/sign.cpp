@@ -6,7 +6,7 @@
 #include <vector>
 
 #include "commands/commands.hpp"
-#include "utils/error.hpp"
+#include "utils/encoding.hpp"
 
 namespace vpdf::commands {
 
@@ -67,7 +67,7 @@ static void print_optional_sig_field(DigitalSignatureHandle* sig, const char* la
     error_type err = getter(sig, str.put());
     if (err == VANILLAPDF_ERROR_OPTIONAL_ENTRY_MISSING) return;
     check(err, label);
-    std::cout << "    " << label << ": " << to_string(str.get()) << "\n";
+    std::cout << "    " << label << ": " << to_string_utf8(str.get()) << "\n";
 }
 
 static int run_sign_list(const SignListOptions& opts) {
