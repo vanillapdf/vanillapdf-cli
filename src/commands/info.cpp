@@ -12,8 +12,8 @@ struct InfoOptions {
 };
 
 static void print_optional_field(DocumentInfoHandle* info, const char* label,
-                                 error_type (*getter)(DocumentInfoHandle*, PdfTextStringHandle**)) {
-    PdfTextStringPtr text;
+                                 error_type (*getter)(DocumentInfoHandle*, StringObjectHandle**)) {
+    StringObjectPtr text;
     error_type err = getter(info, text.put());
     if (err == VANILLAPDF_ERROR_SUCCESS) {
         std::cout << label << ": " << to_string_utf8(text.get()) << "\n";
@@ -63,12 +63,12 @@ static int run_info(const InfoOptions& opts) {
 
     DocumentInfoPtr info;
     if (Document_GetDocumentInfo(document.get(), info.put()) == VANILLAPDF_ERROR_SUCCESS) {
-        print_optional_field(info.get(), "Title",    DocumentInfo_GetTitleText);
-        print_optional_field(info.get(), "Author",   DocumentInfo_GetAuthorText);
-        print_optional_field(info.get(), "Subject",  DocumentInfo_GetSubjectText);
-        print_optional_field(info.get(), "Keywords", DocumentInfo_GetKeywordsText);
-        print_optional_field(info.get(), "Creator",  DocumentInfo_GetCreatorText);
-        print_optional_field(info.get(), "Producer", DocumentInfo_GetProducerText);
+        print_optional_field(info.get(), "Title",    DocumentInfo_GetTitle);
+        print_optional_field(info.get(), "Author",   DocumentInfo_GetAuthor);
+        print_optional_field(info.get(), "Subject",  DocumentInfo_GetSubject);
+        print_optional_field(info.get(), "Keywords", DocumentInfo_GetKeywords);
+        print_optional_field(info.get(), "Creator",  DocumentInfo_GetCreator);
+        print_optional_field(info.get(), "Producer", DocumentInfo_GetProducer);
     }
 
     return 0;
