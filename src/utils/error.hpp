@@ -108,6 +108,10 @@ using BufferPtr = Handle<BufferHandle, Buffer_Release>;
 using PKCS12KeyPtr = Handle<PKCS12KeyHandle, PKCS12Key_Release>;
 using SigningKeyPtr = Handle<SigningKeyHandle, SigningKey_Release>;
 
+// File structure validation handles
+using FileStructureValidationResultPtr = Handle<FileStructureValidationResultHandle, FileStructureValidationResult_Release>;
+using FileStructureIssuePtr = Handle<FileStructureIssueHandle, FileStructureIssue_Release>;
+
 inline std::string last_error_message() {
     size_type len = 0;
     check(Errors_GetLastErrorMessageLength(&len), "Failed to get error message length");
