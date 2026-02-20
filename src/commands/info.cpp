@@ -3,7 +3,7 @@
 #include <memory>
 
 #include "commands/commands.hpp"
-#include "utils/error.hpp"
+#include "utils/encoding.hpp"
 
 namespace vpdf::commands {
 

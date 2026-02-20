@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "commands/commands.hpp"
-#include "utils/error.hpp"
+#include "utils/handles.hpp"
 
 namespace vpdf::commands {
 
