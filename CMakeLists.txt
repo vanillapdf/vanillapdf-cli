@@ -45,6 +45,7 @@ add_executable(vanillapdf-cli
     src/commands/compress.cpp
     src/commands/encrypt.cpp
     src/commands/sign.cpp
+    src/commands/validate.cpp
     src/utils/error.hpp
 )
 
