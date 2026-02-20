@@ -67,3 +67,35 @@ set_tests_properties(cli_sign_remove_no_args PROPERTIES WILL_FAIL TRUE)
 
 add_test(NAME cli_sign_verify_no_args COMMAND vanillapdf-cli sign verify)
 set_tests_properties(cli_sign_verify_no_args PROPERTIES WILL_FAIL TRUE)
+
+# Fixture-based sign add tests
+set(SIGN_TEST_PDF "${CMAKE_CURRENT_LIST_DIR}/fixtures/minimal.pdf")
+set(SIGN_TEST_KEY "${CMAKE_CURRENT_LIST_DIR}/fixtures/test.p12")
+
+# Invalid digest value is rejected before the document is opened
+add_test(NAME cli_sign_add_invalid_digest
+    COMMAND vanillapdf-cli sign add "${SIGN_TEST_PDF}"
+            -o "${CMAKE_BINARY_DIR}/test_sign_invalid_digest.pdf"
+            -k "${SIGN_TEST_KEY}" --digest bogus)
+set_tests_properties(cli_sign_add_invalid_digest PROPERTIES WILL_FAIL TRUE)
+
+# Each supported digest should produce a signed output
+add_test(NAME cli_sign_add_sha256
+    COMMAND vanillapdf-cli sign add "${SIGN_TEST_PDF}"
+            -o "${CMAKE_BINARY_DIR}/test_sign_sha256.pdf"
+            -k "${SIGN_TEST_KEY}")
+
+add_test(NAME cli_sign_add_sha512
+    COMMAND vanillapdf-cli sign add "${SIGN_TEST_PDF}"
+            -o "${CMAKE_BINARY_DIR}/test_sign_sha512.pdf"
+            -k "${SIGN_TEST_KEY}" --digest sha512)
+
+add_test(NAME cli_sign_add_sha384
+    COMMAND vanillapdf-cli sign add "${SIGN_TEST_PDF}"
+            -o "${CMAKE_BINARY_DIR}/test_sign_sha384.pdf"
+            -k "${SIGN_TEST_KEY}" --digest sha384)
+
+add_test(NAME cli_sign_add_sha1
+    COMMAND vanillapdf-cli sign add "${SIGN_TEST_PDF}"
+            -o "${CMAKE_BINARY_DIR}/test_sign_sha1.pdf"
+            -k "${SIGN_TEST_KEY}" --digest sha1)
