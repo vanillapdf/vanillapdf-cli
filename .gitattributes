@@ -1,0 +1,4 @@
+# Treat PDF and key files as binary to prevent line-ending corruption
+*.pdf binary
+*.p12 binary
+*.pfx binary
