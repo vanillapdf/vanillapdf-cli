@@ -39,6 +39,13 @@
             }
         },
         {
+            "name": "ci",
+            "displayName": "CI (auto-vcpkg, pinned vanillapdf tag)",
+            "description": "Auto-bootstraps vcpkg and builds vanillapdf from source at the pinned tag in cmake/vanillapdf.cmake. Used by the sanity-check workflow.",
+            "binaryDir": "${sourceDir}/build",
+            "installDir": "${sourceDir}/install"
+        },
+        {
             "name": "snap",
             "displayName": "Snap package (Ubuntu 24.04 system packages)",
             "description": "System packages for CLI11 and vanillapdf dependencies. vanillapdf built from source at the pinned tag in cmake/vanillapdf.cmake.",
