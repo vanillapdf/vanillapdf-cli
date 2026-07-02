@@ -40,8 +40,10 @@ jobs:
         include:
           - name: linux
             os: ubuntu-latest
+            preset: ci
           - name: windows
             os: windows-2025
+            preset: ci-windows-static
 
     steps:
       - uses: actions/checkout@v4
@@ -60,7 +62,7 @@ jobs:
           restore-keys: vcpkg-${{ matrix.name }}-
 
       - name: Configure
-        run: cmake --preset ci
+        run: cmake --preset ${{ matrix.preset }}
 
       - name: Build
         run: cmake --build build --config Debug
