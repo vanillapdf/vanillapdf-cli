@@ -46,6 +46,22 @@
             "installDir": "${sourceDir}/install"
         },
         {
+            "name": "ci-windows-static",
+            "inherits": "ci",
+            "displayName": "CI Windows static (/MT, auto-vcpkg, pinned vanillapdf tag)",
+            "description": "Like 'ci' but static libs + static CRT (/MT). Self-contained exe with OpenSSL providers compiled in — no legacy.dll discovery needed. Used by the Windows sanity-check job and mirrors the distributable artifact.",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            },
+            "cacheVariables": {
+                "VCPKG_TARGET_TRIPLET": "x64-windows-static",
+                "BUILD_SHARED_LIBS": "OFF",
+                "VANILLAPDF_USE_STATIC_CRT": "ON"
+            }
+        },
+        {
             "name": "snap",
             "displayName": "Snap package (Ubuntu 24.04 system packages)",
             "description": "System packages for CLI11 and vanillapdf dependencies. vanillapdf built from source at the pinned tag in cmake/vanillapdf.cmake.",

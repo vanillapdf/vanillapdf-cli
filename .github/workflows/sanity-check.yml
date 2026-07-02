@@ -38,10 +38,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: linux
+          - name: linux-release
             os: ubuntu-latest
-          - name: windows
+            preset: ci
+            config: Release
+          - name: windows-release
             os: windows-2025
+            preset: ci-windows-static
+            config: Release
 
     steps:
       - uses: actions/checkout@v4
@@ -56,14 +60,14 @@ jobs:
           path: |
             ${{ github.workspace }}/build/vcpkg
             ${{ github.workspace }}/build/vcpkg_installed
-          key: vcpkg-${{ matrix.name }}-${{ hashFiles('vcpkg.json') }}
-          restore-keys: vcpkg-${{ matrix.name }}-
+          key: vcpkg-${{ matrix.preset }}-${{ hashFiles('vcpkg.json') }}
+          restore-keys: vcpkg-${{ matrix.preset }}-
 
       - name: Configure
-        run: cmake --preset ci
+        run: cmake --preset ${{ matrix.preset }} -DCMAKE_BUILD_TYPE=${{ matrix.config }}
 
       - name: Build
-        run: cmake --build build --config Debug
+        run: cmake --build build --config ${{ matrix.config }}
 
       - name: Test
-        run: ctest --test-dir build -C Debug --output-on-failure
+        run: ctest --test-dir build -C ${{ matrix.config }} --output-on-failure
