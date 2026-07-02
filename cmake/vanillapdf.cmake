@@ -7,7 +7,7 @@
 option(VANILLAPDF_CLI_EXTERNAL_VANILLAPDF
     "Use vanillapdf from the system or a package manager" OFF)
 
-set(VANILLAPDF_GIT_TAG "v2.3.0-alpha.1" CACHE STRING
+set(VANILLAPDF_GIT_TAG "v2.3.0-beta.1" CACHE STRING
     "vanillapdf git tag/branch to build from source via FetchContent")
 
 if(VANILLAPDF_CLI_EXTERNAL_VANILLAPDF)
