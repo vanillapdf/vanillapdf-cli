@@ -8,7 +8,7 @@
 
 #include "utils/handles.hpp"
 
-namespace vpdf {
+namespace vanillapdf::cli {
 
 inline char32_t read_utf16be_codepoint(std::string_view data, size_t& i) {
     uint16_t hi = (static_cast<uint8_t>(data[i]) << 8) | static_cast<uint8_t>(data[i + 1]);
@@ -97,6 +97,6 @@ inline std::string to_string_utf8(StringObjectHandle* handle) {
     return out;
 }
 
-} // namespace vpdf
+} // namespace vanillapdf::cli
 
 #endif // VANILLAPDF_CLI_UTILS_ENCODING_HPP

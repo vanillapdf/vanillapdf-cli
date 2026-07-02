@@ -5,7 +5,7 @@
 #include "commands/commands.hpp"
 #include "utils/encoding.hpp"
 
-namespace vpdf::commands {
+namespace vanillapdf::cli::commands {
 
 struct InfoOptions {
     std::string input;
@@ -21,8 +21,8 @@ static void print_optional_field(DocumentInfoHandle* info, const char* label,
         std::cout << label << ": N/A\n";
     } else {
         std::cout << label << ": <unable to parse>";
-        if (vpdf::g_verbose) {
-            std::cout << " (" << vpdf::last_error_message() << ")";
+        if (vanillapdf::cli::g_verbose) {
+            std::cout << " (" << vanillapdf::cli::last_error_message() << ")";
         }
         std::cout << "\n";
     }
@@ -92,4 +92,4 @@ void register_info(CLI::App& app) {
     });
 }
 
-} // namespace vpdf::commands
+} // namespace vanillapdf::cli::commands

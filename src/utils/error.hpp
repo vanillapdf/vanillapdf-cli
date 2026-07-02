@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <string>
 
-namespace vpdf {
+namespace vanillapdf::cli {
 
 inline bool g_verbose = false;
 
@@ -39,6 +39,6 @@ inline std::string last_error_message() {
     return text;
 }
 
-} // namespace vpdf
+} // namespace vanillapdf::cli
 
 #endif // VANILLAPDF_CLI_UTILS_ERROR_HPP

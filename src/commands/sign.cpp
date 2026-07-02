@@ -8,7 +8,7 @@
 #include "commands/commands.hpp"
 #include "utils/encoding.hpp"
 
-namespace vpdf::commands {
+namespace vanillapdf::cli::commands {
 
 struct SignAddOptions {
     std::string input;
@@ -504,4 +504,4 @@ void register_sign(CLI::App& app) {
     });
 }
 
-} // namespace vpdf::commands
+} // namespace vanillapdf::cli::commands

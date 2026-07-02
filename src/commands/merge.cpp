@@ -7,7 +7,7 @@
 #include "commands/commands.hpp"
 #include "utils/handles.hpp"
 
-namespace vpdf::commands {
+namespace vanillapdf::cli::commands {
 
 struct MergeOptions {
     std::vector<std::string> inputs;
@@ -55,4 +55,4 @@ void register_merge(CLI::App& app) {
     });
 }
 
-} // namespace vpdf::commands
+} // namespace vanillapdf::cli::commands

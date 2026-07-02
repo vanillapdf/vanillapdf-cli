@@ -38,19 +38,19 @@ int main(int argc, char** argv) {
     LoggingSeverity log_severity = LoggingSeverity_Off;
     app.add_option("--log-level", log_severity, "Set library log level (off, critical, error, warning, info, debug, trace)")
         ->transform(CLI::CheckedTransformer(log_levels));
-    app.add_flag("-v,--verbose", vpdf::g_verbose, "Show detailed error information");
+    app.add_flag("-v,--verbose", vanillapdf::cli::g_verbose, "Show detailed error information");
 
     app.parse_complete_callback([&log_severity]() {
         Logging_SetSeverity(log_severity);
     });
 
-    vpdf::commands::register_info(app);
-    vpdf::commands::register_merge(app);
-    vpdf::commands::register_split(app);
-    vpdf::commands::register_rotate(app);
-    vpdf::commands::register_compress(app);
-    vpdf::commands::register_encrypt(app);
-    vpdf::commands::register_sign(app);
+    vanillapdf::cli::commands::register_info(app);
+    vanillapdf::cli::commands::register_merge(app);
+    vanillapdf::cli::commands::register_split(app);
+    vanillapdf::cli::commands::register_rotate(app);
+    vanillapdf::cli::commands::register_compress(app);
+    vanillapdf::cli::commands::register_encrypt(app);
+    vanillapdf::cli::commands::register_sign(app);
 
     CLI11_PARSE(app, argc, argv);
     return 0;
