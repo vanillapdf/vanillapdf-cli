@@ -72,7 +72,7 @@ inline std::string to_string_utf8(StringObjectHandle* handle) {
             out.reserve(data.size());
             for (size_t i = 0; i < data.size(); ++i) {
                 uint32_t cp = 0;
-                check(PDFDocEncoding_ToUnicode(static_cast<uint8_t>(data[i]), &cp));
+                check(TextStringEncoding_PDFDocEncodingByteToUnicode(static_cast<uint8_t>(data[i]), &cp));
                 encode_utf8(static_cast<char32_t>(cp), out);
             }
             break;
