@@ -30,9 +30,9 @@ C++17 CLI tool built on the [vanillapdf](https://github.com/vanillapdf/vanillapd
 **Command pattern**: Each command lives in `src/commands/<name>.cpp` and exposes a `register_<name>(CLI::App&)` function (declared in `commands.hpp`). Registration creates a CLI11 subcommand with options and a callback. `main.cpp` calls all register functions.
 
 **`src/utils/error.hpp`**: Core utilities shared across commands:
-- `vpdf::check(error_type, context)` — throws `vpdf::pdf_error` on non-success vanillapdf error codes
-- `vpdf::Handle<T, ReleaseFn>` — RAII wrapper for vanillapdf C API opaque handles (use `.get()`, `.put()` for out-params, `.release()`)
-- `vpdf::to_string(StringObjectHandle*)` — extracts `std::string` from a vanillapdf string object
+- `vanillapdf::cli::check(error_type, context)` — throws `vanillapdf::cli::pdf_error` on non-success vanillapdf error codes
+- `vanillapdf::cli::Handle<T, ReleaseFn>` — RAII wrapper for vanillapdf C API opaque handles (use `.get()`, `.put()` for out-params, `.release()`)
+- `vanillapdf::cli::to_string(StringObjectHandle*)` — extracts `std::string` from a vanillapdf string object
 - Type aliases for RAII handles: `DocumentPtr`, `CatalogPtr`, `PageTreePtr`, `PageObjectPtr`, `FilePtr`, `BufferPtr`, `DocumentInfoPtr`, `DocumentEncryptionSettingsPtr`, `DocumentSignatureSettingsPtr`, `PKCS12KeyPtr`, `SigningKeyPtr`, `InteractiveFormPtr`, `FieldCollectionPtr`, `FieldPtr`, `SignatureFieldPtr`, `DigitalSignaturePtr`, `DictionaryObjectPtr`, `NameObjectPtr`, `IntegerObjectPtr`, `ObjectPtr`, `StringObjectPtr`, `LiteralStringObjectPtr`
 
 ## Conventions

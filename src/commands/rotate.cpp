@@ -7,7 +7,7 @@
 #include "commands/commands.hpp"
 #include "utils/handles.hpp"
 
-namespace vpdf::commands {
+namespace vanillapdf::cli::commands {
 
 struct RotateOptions {
     std::string input;
@@ -116,4 +116,4 @@ void register_rotate(CLI::App& app) {
     });
 }
 
-} // namespace vpdf::commands
+} // namespace vanillapdf::cli::commands

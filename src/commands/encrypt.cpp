@@ -6,7 +6,7 @@
 #include "commands/commands.hpp"
 #include "utils/handles.hpp"
 
-namespace vpdf::commands {
+namespace vanillapdf::cli::commands {
 
 struct EncryptAddOptions {
     std::string input;
@@ -119,4 +119,4 @@ void register_encrypt(CLI::App& app) {
     });
 }
 
-} // namespace vpdf::commands
+} // namespace vanillapdf::cli::commands

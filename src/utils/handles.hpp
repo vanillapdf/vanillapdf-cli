@@ -5,7 +5,7 @@
 
 #include "utils/error.hpp"
 
-namespace vpdf {
+namespace vanillapdf::cli {
 
 template <typename T, error_type (CALLING_CONVENTION *ReleaseFn)(T*)>
 class Handle {
@@ -84,6 +84,6 @@ using BufferPtr = Handle<BufferHandle, Buffer_Release>;
 using PKCS12KeyPtr = Handle<PKCS12KeyHandle, PKCS12Key_Release>;
 using SigningKeyPtr = Handle<SigningKeyHandle, SigningKey_Release>;
 
-} // namespace vpdf
+} // namespace vanillapdf::cli
 
 #endif // VANILLAPDF_CLI_UTILS_HANDLES_HPP

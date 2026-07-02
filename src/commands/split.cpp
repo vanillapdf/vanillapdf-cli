@@ -7,7 +7,7 @@
 #include "commands/commands.hpp"
 #include "utils/handles.hpp"
 
-namespace vpdf::commands {
+namespace vanillapdf::cli::commands {
 
 struct SplitOptions {
     std::string input;
@@ -83,4 +83,4 @@ void register_split(CLI::App& app) {
     });
 }
 
-} // namespace vpdf::commands
+} // namespace vanillapdf::cli::commands
