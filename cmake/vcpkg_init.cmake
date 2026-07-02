@@ -41,7 +41,8 @@ if(NOT VANILLAPDF_CLI_EXTERNAL_VANILLAPDF)
     list(APPEND VANILLAPDF_CLI_VCPKG_FEATURE_LIST "zlib")
     list(APPEND VANILLAPDF_CLI_VCPKG_FEATURE_LIST "spdlog")
     list(APPEND VANILLAPDF_CLI_VCPKG_FEATURE_LIST "fmt")
-    list(APPEND VANILLAPDF_CLI_VCPKG_FEATURE_LIST "nlohmann-json")
+    # nlohmann-json is only needed when vanillapdf licensing is enabled
+    # (VANILLAPDF_ENABLE_LICENSING), which this CLI never turns on.
 endif()
 
 list(JOIN VANILLAPDF_CLI_VCPKG_FEATURE_LIST ";" VANILLAPDF_CLI_VCPKG_FEATURE_STRING)

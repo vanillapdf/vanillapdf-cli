@@ -29,10 +29,6 @@
         "fmt": {
             "description": "fmt for vanillapdf string formatting",
             "dependencies": ["fmt"]
-        },
-        "nlohmann-json": {
-            "description": "nlohmann-json for vanillapdf JSON configuration",
-            "dependencies": ["nlohmann-json"]
         }
     }
 }
