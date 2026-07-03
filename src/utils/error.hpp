@@ -5,6 +5,8 @@
 #include <stdexcept>
 #include <string>
 
+#include <fmt/core.h>
+
 namespace vanillapdf::cli {
 
 inline bool g_verbose = false;
@@ -37,6 +39,18 @@ inline std::string last_error_message() {
     std::string text(len - 1, '\0');
     check(Errors_GetLastErrorMessage(text.data(), len), "Failed to get error message");
     return text;
+}
+
+// Print a pdf_error to stderr. In verbose mode, appends vanillapdf's last
+// error message when one is available.
+inline void report_error(const pdf_error& e) {
+    if (g_verbose) {
+        if (const std::string detail = last_error_message(); !detail.empty()) {
+            fmt::print(stderr, "Error: {} ({})\n", e.what(), detail);
+            return;
+        }
+    }
+    fmt::print(stderr, "Error: {}\n", e.what());
 }
 
 } // namespace vanillapdf::cli

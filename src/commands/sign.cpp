@@ -7,6 +7,7 @@
 
 #include "commands/commands.hpp"
 #include "utils/encoding.hpp"
+#include "utils/json.hpp"
 
 namespace vanillapdf::cli::commands {
 
@@ -326,22 +327,6 @@ static void print_verify_text(const std::string& file, const std::vector<SigVeri
     }
 }
 
-static std::string json_escape(const std::string& s) {
-    std::string out;
-    out.reserve(s.size() + 2);
-    out += '"';
-    for (char c : s) {
-        if (c == '"')       out += "\\\"";
-        else if (c == '\\') out += "\\\\";
-        else if (c == '\n') out += "\\n";
-        else if (c == '\r') out += "\\r";
-        else if (c == '\t') out += "\\t";
-        else                out += c;
-    }
-    out += '"';
-    return out;
-}
-
 static void print_verify_json(const std::string& file, const std::vector<SigVerifyResult>& results) {
     std::cout << "{\n";
     std::cout << "  \"file\": " << json_escape(file) << ",\n";
@@ -435,7 +420,7 @@ void register_sign(CLI::App& app) {
         try {
             std::exit(run_sign_add(*add_opts));
         } catch (const pdf_error& e) {
-            std::cerr << "Error: " << e.what() << "\n";
+            report_error(e);
             std::exit(1);
         }
     });
@@ -451,7 +436,7 @@ void register_sign(CLI::App& app) {
         try {
             std::exit(run_sign_list(*list_opts));
         } catch (const pdf_error& e) {
-            std::cerr << "Error: " << e.what() << "\n";
+            report_error(e);
             std::exit(1);
         }
     });
@@ -469,7 +454,7 @@ void register_sign(CLI::App& app) {
         try {
             std::exit(run_sign_remove(*rm_opts));
         } catch (const pdf_error& e) {
-            std::cerr << "Error: " << e.what() << "\n";
+            report_error(e);
             std::exit(1);
         }
     });
@@ -498,7 +483,7 @@ void register_sign(CLI::App& app) {
         try {
             std::exit(run_sign_verify(*verify_opts));
         } catch (const pdf_error& e) {
-            std::cerr << "Error: " << e.what() << "\n";
+            report_error(e);
             std::exit(1);
         }
     });

@@ -31,6 +31,16 @@ if(NOT VANILLAPDF_CLI_EXTERNAL_CLI11)
     list(APPEND VANILLAPDF_CLI_VCPKG_FEATURE_LIST "cli11")
 endif()
 
+# fmt is used directly by the CLI (and transitively by vanillapdf).
+if(NOT VANILLAPDF_CLI_EXTERNAL_FMT)
+    list(APPEND VANILLAPDF_CLI_VCPKG_FEATURE_LIST "fmt")
+endif()
+
+# GoogleTest, only when building the tests.
+if(VANILLAPDF_CLI_ENABLE_TESTS)
+    list(APPEND VANILLAPDF_CLI_VCPKG_FEATURE_LIST "tests")
+endif()
+
 # When vanillapdf is built from source via FetchContent (VANILLAPDF_INTERNAL_VCPKG=OFF
 # is set on the sub-project), its transitive dependencies must be provided by the
 # parent project's vcpkg. Only include them when not using an external vanillapdf.
@@ -40,7 +50,7 @@ if(NOT VANILLAPDF_CLI_EXTERNAL_VANILLAPDF)
     list(APPEND VANILLAPDF_CLI_VCPKG_FEATURE_LIST "jpeg2000")
     list(APPEND VANILLAPDF_CLI_VCPKG_FEATURE_LIST "zlib")
     list(APPEND VANILLAPDF_CLI_VCPKG_FEATURE_LIST "spdlog")
-    list(APPEND VANILLAPDF_CLI_VCPKG_FEATURE_LIST "fmt")
+    # fmt is added above (used directly by the CLI as well).
     # nlohmann-json is only needed when vanillapdf licensing is enabled
     # (VANILLAPDF_ENABLE_LICENSING), which this CLI never turns on.
 endif()

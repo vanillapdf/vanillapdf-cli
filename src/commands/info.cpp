@@ -86,7 +86,7 @@ void register_info(CLI::App& app) {
         try {
             std::exit(run_info(*opts));
         } catch (const pdf_error& e) {
-            std::cerr << "Error: " << e.what() << "\n";
+            report_error(e);
             std::exit(1);
         }
     });

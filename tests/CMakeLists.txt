@@ -1,3 +1,12 @@
+# Unit tests (GoogleTest)
+find_package(GTest CONFIG REQUIRED)
+include(GoogleTest)
+
+add_executable(json_test unit/json_test.cpp)
+target_link_libraries(json_test PRIVATE GTest::gtest_main fmt::fmt)
+target_include_directories(json_test PRIVATE ${CMAKE_SOURCE_DIR}/src)
+gtest_discover_tests(json_test)
+
 # CLI integration tests using CTest
 
 # Helpers

@@ -15,7 +15,8 @@
             "cacheVariables": {
                 "VANILLAPDF_CLI_INTERNAL_VCPKG": "OFF",
                 "VANILLAPDF_CLI_EXTERNAL_VANILLAPDF": "ON",
-                "VANILLAPDF_CLI_EXTERNAL_CLI11": "ON"
+                "VANILLAPDF_CLI_EXTERNAL_CLI11": "ON",
+                "VANILLAPDF_CLI_EXTERNAL_FMT": "ON"
             }
         },
         {
@@ -25,7 +26,8 @@
             "binaryDir": "${sourceDir}/build",
             "installDir": "${sourceDir}/install",
             "cacheVariables": {
-                "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+                "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+                "VANILLAPDF_CLI_ENABLE_TESTS": "ON"
             }
         },
         {
@@ -35,7 +37,8 @@
             "binaryDir": "${sourceDir}/build",
             "installDir": "${sourceDir}/install",
             "cacheVariables": {
-                "VANILLAPDF_GIT_TAG": "main"
+                "VANILLAPDF_GIT_TAG": "main",
+                "VANILLAPDF_CLI_ENABLE_TESTS": "ON"
             }
         },
         {
@@ -43,7 +46,10 @@
             "displayName": "CI (auto-vcpkg, pinned vanillapdf tag)",
             "description": "Auto-bootstraps vcpkg and builds vanillapdf from source at the pinned tag in cmake/vanillapdf.cmake. Used by the sanity-check workflow.",
             "binaryDir": "${sourceDir}/build",
-            "installDir": "${sourceDir}/install"
+            "installDir": "${sourceDir}/install",
+            "cacheVariables": {
+                "VANILLAPDF_CLI_ENABLE_TESTS": "ON"
+            }
         },
         {
             "name": "ci-windows-static",
@@ -71,6 +77,7 @@
                 "VANILLAPDF_CLI_INTERNAL_VCPKG": "OFF",
                 "VANILLAPDF_CLI_EXTERNAL_VANILLAPDF": "OFF",
                 "VANILLAPDF_CLI_EXTERNAL_CLI11": "ON",
+                "VANILLAPDF_CLI_EXTERNAL_FMT": "ON",
                 "BUILD_SHARED_LIBS": "OFF",
                 "CMAKE_BUILD_TYPE": "Release",
                 "VANILLAPDF_CLI_ENABLE_TESTS": "OFF"

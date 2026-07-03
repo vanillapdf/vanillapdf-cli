@@ -110,7 +110,7 @@ void register_rotate(CLI::App& app) {
         try {
             std::exit(run_rotate(*opts));
         } catch (const pdf_error& e) {
-            std::cerr << "Error: " << e.what() << "\n";
+            report_error(e);
             std::exit(1);
         }
     });

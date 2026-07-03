@@ -93,7 +93,7 @@ void register_encrypt(CLI::App& app) {
         try {
             std::exit(run_encrypt_add(*add_opts));
         } catch (const pdf_error& e) {
-            std::cerr << "Error: " << e.what() << "\n";
+            report_error(e);
             std::exit(1);
         }
     });
@@ -113,7 +113,7 @@ void register_encrypt(CLI::App& app) {
         try {
             std::exit(run_encrypt_remove(*rm_opts));
         } catch (const pdf_error& e) {
-            std::cerr << "Error: " << e.what() << "\n";
+            report_error(e);
             std::exit(1);
         }
     });
