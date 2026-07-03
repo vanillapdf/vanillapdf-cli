@@ -84,6 +84,10 @@ using BufferPtr = Handle<BufferHandle, Buffer_Release>;
 using PKCS12KeyPtr = Handle<PKCS12KeyHandle, PKCS12Key_Release>;
 using SigningKeyPtr = Handle<SigningKeyHandle, SigningKey_Release>;
 
+// File structure validation handles
+using FileStructureValidationResultPtr = Handle<FileStructureValidationResultHandle, FileStructureValidationResult_Release>;
+using FileStructureIssuePtr = Handle<FileStructureIssueHandle, FileStructureIssue_Release>;
+
 } // namespace vanillapdf::cli
 
 #endif // VANILLAPDF_CLI_UTILS_HANDLES_HPP

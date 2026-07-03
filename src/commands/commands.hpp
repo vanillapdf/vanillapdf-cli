@@ -12,6 +12,7 @@ void register_rotate(CLI::App& app);
 void register_compress(CLI::App& app);
 void register_encrypt(CLI::App& app);
 void register_sign(CLI::App& app);
+void register_validate(CLI::App& app);
 
 } // namespace vanillapdf::cli::commands
 

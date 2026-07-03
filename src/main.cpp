@@ -51,6 +51,7 @@ int main(int argc, char** argv) {
     vanillapdf::cli::commands::register_compress(app);
     vanillapdf::cli::commands::register_encrypt(app);
     vanillapdf::cli::commands::register_sign(app);
+    vanillapdf::cli::commands::register_validate(app);
 
     CLI11_PARSE(app, argc, argv);
     return 0;

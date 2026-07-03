@@ -12,6 +12,7 @@ add_test(NAME cli_unknown_subcommand COMMAND vanillapdf-cli nonexistent)
 set_tests_properties(cli_unknown_subcommand PROPERTIES WILL_FAIL TRUE)
 
 # Subcommand help
+add_test(NAME cli_validate_help COMMAND vanillapdf-cli validate --help)
 add_test(NAME cli_info_help COMMAND vanillapdf-cli info --help)
 add_test(NAME cli_merge_help COMMAND vanillapdf-cli merge --help)
 add_test(NAME cli_split_help COMMAND vanillapdf-cli split --help)
@@ -99,3 +100,14 @@ add_test(NAME cli_sign_add_sha1
     COMMAND vanillapdf-cli sign add "${SIGN_TEST_PDF}"
             -o "${CMAKE_BINARY_DIR}/test_sign_sha1.pdf"
             -k "${SIGN_TEST_KEY}" --digest sha1)
+
+# validate
+add_test(NAME cli_validate_no_args COMMAND vanillapdf-cli validate)
+set_tests_properties(cli_validate_no_args PROPERTIES WILL_FAIL TRUE)
+
+# Fixture-based validate tests
+set(VALIDATE_TEST_PDF "${CMAKE_CURRENT_LIST_DIR}/fixtures/minimal.pdf")
+
+add_test(NAME cli_validate_minimal COMMAND vanillapdf-cli validate "${VALIDATE_TEST_PDF}")
+add_test(NAME cli_validate_minimal_json COMMAND vanillapdf-cli validate "${VALIDATE_TEST_PDF}" --json)
+add_test(NAME cli_validate_minimal_strict COMMAND vanillapdf-cli validate "${VALIDATE_TEST_PDF}" --strict)
