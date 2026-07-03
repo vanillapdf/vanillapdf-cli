@@ -35,6 +35,18 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# Match a target's MSVC runtime (CRT) to the dependencies. vanillapdf configures
+# its own targets from VANILLAPDF_USE_STATIC_CRT; apply the same choice to our
+# targets so a static build (/MT) does not mismatch the static-CRT dependencies
+# with LNK2038. Mirrors vanillapdf's vanillapdf_configure_msvc_runtime().
+function(vanillapdf_cli_configure_msvc_runtime target)
+    if(MSVC AND VANILLAPDF_USE_STATIC_CRT)
+        set_target_properties(${target} PROPERTIES
+            MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
+        )
+    endif()
+endfunction()
+
 # vanillapdf
 include(cmake/vanillapdf.cmake)
 
@@ -77,15 +89,7 @@ set_target_properties(vanillapdf-cli PROPERTIES
     OUTPUT_NAME vanillapdf-cli
 )
 
-# Match the MSVC runtime (CRT) to the dependencies. vanillapdf configures its
-# own targets from VANILLAPDF_USE_STATIC_CRT; apply the same choice to the CLI
-# target so a static build (/MT) does not mismatch the static-CRT dependencies
-# with LNK2038. Mirrors vanillapdf's vanillapdf_configure_msvc_runtime().
-if(MSVC AND VANILLAPDF_USE_STATIC_CRT)
-    set_target_properties(vanillapdf-cli PROPERTIES
-        MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
-    )
-endif()
+vanillapdf_cli_configure_msvc_runtime(vanillapdf-cli)
 
 # On Windows with a shared vanillapdf build, copy the DLL and its runtime
 # dependencies (OpenSSL, zlib, etc.) alongside the executable so tests and
