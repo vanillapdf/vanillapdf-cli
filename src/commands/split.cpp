@@ -77,7 +77,7 @@ void register_split(CLI::App& app) {
         try {
             std::exit(run_split(*opts));
         } catch (const pdf_error& e) {
-            std::cerr << "Error: " << e.what() << "\n";
+            report_error(e);
             std::exit(1);
         }
     });

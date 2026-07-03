@@ -5,6 +5,7 @@
 #include "commands/commands.hpp"
 #include "utils/error.hpp"
 #include "utils/handles.hpp"
+#include "utils/json.hpp"
 
 namespace vanillapdf::cli::commands {
 
@@ -49,22 +50,6 @@ static std::string issue_message(FileStructureIssueHandle* issue) {
     size_type size = 0;
     check(Buffer_GetData(buf.get(), &data, &size), "Failed to read issue message");
     return std::string(data, size);
-}
-
-static std::string json_escape(const std::string& s) {
-    std::string out;
-    out.reserve(s.size() + 2);
-    out += '"';
-    for (char c : s) {
-        if (c == '"')       out += "\\\"";
-        else if (c == '\\') out += "\\\\";
-        else if (c == '\n') out += "\\n";
-        else if (c == '\r') out += "\\r";
-        else if (c == '\t') out += "\\t";
-        else                out += c;
-    }
-    out += '"';
-    return out;
 }
 
 static int run_validate(const ValidateOptions& opts) {
@@ -175,7 +160,7 @@ void register_validate(CLI::App& app) {
         try {
             std::exit(run_validate(*opts));
         } catch (const pdf_error& e) {
-            std::cerr << "Error: " << e.what() << "\n";
+            report_error(e);
             std::exit(1);
         }
     });

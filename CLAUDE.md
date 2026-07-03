@@ -29,11 +29,13 @@ C++17 CLI tool built on the [vanillapdf](https://github.com/vanillapdf/vanillapd
 
 **Command pattern**: Each command lives in `src/commands/<name>.cpp` and exposes a `register_<name>(CLI::App&)` function (declared in `commands.hpp`). Registration creates a CLI11 subcommand with options and a callback. `main.cpp` calls all register functions.
 
-**`src/utils/error.hpp`**: Core utilities shared across commands:
-- `vanillapdf::cli::check(error_type, context)` — throws `vanillapdf::cli::pdf_error` on non-success vanillapdf error codes
-- `vanillapdf::cli::Handle<T, ReleaseFn>` — RAII wrapper for vanillapdf C API opaque handles (use `.get()`, `.put()` for out-params, `.release()`)
-- `vanillapdf::cli::to_string(StringObjectHandle*)` — extracts `std::string` from a vanillapdf string object
-- Type aliases for RAII handles: `DocumentPtr`, `CatalogPtr`, `PageTreePtr`, `PageObjectPtr`, `FilePtr`, `BufferPtr`, `DocumentInfoPtr`, `DocumentEncryptionSettingsPtr`, `DocumentSignatureSettingsPtr`, `PKCS12KeyPtr`, `SigningKeyPtr`, `InteractiveFormPtr`, `FieldCollectionPtr`, `FieldPtr`, `SignatureFieldPtr`, `DigitalSignaturePtr`, `DictionaryObjectPtr`, `NameObjectPtr`, `IntegerObjectPtr`, `ObjectPtr`, `StringObjectPtr`, `LiteralStringObjectPtr`
+**Shared utilities** (`src/utils/`, all in namespace `vanillapdf::cli`):
+- `error.hpp` — `check(error_type, context)` (throws `pdf_error` on non-success codes), `last_error_message()`, `report_error(pdf_error)` (prints to stderr; appends vanillapdf's last error under `-v`), and the `g_verbose` flag.
+- `handles.hpp` — `Handle<T, ReleaseFn>` RAII wrapper for vanillapdf C API opaque handles (use `.get()`, `.put()` for out-params, `.release()`), plus type aliases: `DocumentPtr`, `CatalogPtr`, `PageTreePtr`, `PageObjectPtr`, `FilePtr`, `BufferPtr`, `DocumentInfoPtr`, `PKCS12KeyPtr`, `SigningKeyPtr`, `StringObjectPtr`, `FileStructureValidationResultPtr`, `FileStructureIssuePtr`, and others.
+- `encoding.hpp` — `to_string_utf8(StringObjectHandle*)` decodes a PDF text string (PDFDocEncoding / UTF-16BE / UTF-8) to UTF-8 via `TextStringEncoding_Detect`.
+- `json.hpp` — `json_escape(string_view)` escapes a string as a JSON string literal (built with fmt).
+
+Dependencies (`vanillapdf`, `CLI11`, `fmt`) come via `find_package`; `fmt` is used directly by the CLI. GoogleTest backs the unit tests and is only pulled in when `VANILLAPDF_CLI_ENABLE_TESTS=ON` (off by default; on in the dev/CI presets).
 
 ## Conventions
 

@@ -8,6 +8,7 @@ class VanillapdfCli < Formula
 
   depends_on "cmake" => :build
   depends_on "cli11"
+  depends_on "fmt"
   depends_on "vanillapdf"
 
   def install
@@ -15,6 +16,7 @@ class VanillapdfCli < Formula
       -DVANILLAPDF_CLI_INTERNAL_VCPKG=OFF
       -DVANILLAPDF_CLI_EXTERNAL_VANILLAPDF=ON
       -DVANILLAPDF_CLI_EXTERNAL_CLI11=ON
+      -DVANILLAPDF_CLI_EXTERNAL_FMT=ON
     ]
 
     system "cmake", "-S", ".", "-B", "build", *args, *std_cmake_args

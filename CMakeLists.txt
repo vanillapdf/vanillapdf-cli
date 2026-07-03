@@ -13,6 +13,15 @@ option(VANILLAPDF_CLI_INTERNAL_VCPKG "Enable internal vcpkg dependency managemen
 #   Set to ON to use CLI11 from the system or a package manager.
 option(VANILLAPDF_CLI_EXTERNAL_CLI11 "Use CLI11 from the system or a package manager" OFF)
 
+# VANILLAPDF_CLI_EXTERNAL_FMT: When OFF (default), fmt is provided by vcpkg.
+#   Set to ON to use fmt from the system or a package manager.
+option(VANILLAPDF_CLI_EXTERNAL_FMT "Use fmt from the system or a package manager" OFF)
+
+# Off by default: a plain source/package build needs neither the tests nor
+# their GoogleTest dependency. CI and the dev presets turn it on. Declared
+# before vcpkg_init so GoogleTest is only requested from vcpkg when enabled.
+option(VANILLAPDF_CLI_ENABLE_TESTS "Build tests" OFF)
+
 include(cmake/vcpkg_init.cmake)
 
 project(vanillapdf-cli
@@ -26,13 +35,26 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-option(VANILLAPDF_CLI_ENABLE_TESTS "Build tests" ON)
+# Match a target's MSVC runtime (CRT) to the dependencies. vanillapdf configures
+# its own targets from VANILLAPDF_USE_STATIC_CRT; apply the same choice to our
+# targets so a static build (/MT) does not mismatch the static-CRT dependencies
+# with LNK2038. Mirrors vanillapdf's vanillapdf_configure_msvc_runtime().
+function(vanillapdf_cli_configure_msvc_runtime target)
+    if(MSVC AND VANILLAPDF_USE_STATIC_CRT)
+        set_target_properties(${target} PROPERTIES
+            MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
+        )
+    endif()
+endfunction()
 
 # vanillapdf
 include(cmake/vanillapdf.cmake)
 
 # CLI11
 find_package(CLI11 REQUIRED)
+
+# fmt
+find_package(fmt CONFIG REQUIRED)
 
 # Executable
 add_executable(vanillapdf-cli
@@ -52,6 +74,7 @@ add_executable(vanillapdf-cli
 target_link_libraries(vanillapdf-cli PRIVATE
     vanillapdf::vanillapdf
     CLI11::CLI11
+    fmt::fmt
 )
 
 target_include_directories(vanillapdf-cli PRIVATE
@@ -66,15 +89,7 @@ set_target_properties(vanillapdf-cli PROPERTIES
     OUTPUT_NAME vanillapdf-cli
 )
 
-# Match the MSVC runtime (CRT) to the dependencies. vanillapdf configures its
-# own targets from VANILLAPDF_USE_STATIC_CRT; apply the same choice to the CLI
-# target so a static build (/MT) does not mismatch the static-CRT dependencies
-# with LNK2038. Mirrors vanillapdf's vanillapdf_configure_msvc_runtime().
-if(MSVC AND VANILLAPDF_USE_STATIC_CRT)
-    set_target_properties(vanillapdf-cli PROPERTIES
-        MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
-    )
-endif()
+vanillapdf_cli_configure_msvc_runtime(vanillapdf-cli)
 
 # On Windows with a shared vanillapdf build, copy the DLL and its runtime
 # dependencies (OpenSSL, zlib, etc.) alongside the executable so tests and
@@ -103,12 +118,12 @@ set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "${PROJECT_DESCRIPTION}")
 set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
 
 # DEB
-set(CPACK_DEBIAN_PACKAGE_DEPENDS "libvanillapdf (>= 0.1.0)")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "libvanillapdf (>= 0.1.0), libfmt10")
 set(CPACK_DEBIAN_PACKAGE_SECTION "utils")
 
 # RPM
-set(CPACK_RPM_PACKAGE_REQUIRES "vanillapdf >= 0.1.0")
-set(CPACK_RPM_PACKAGE_LICENSE "BSD")
+set(CPACK_RPM_PACKAGE_REQUIRES "vanillapdf >= 0.1.0, fmt")
+set(CPACK_RPM_PACKAGE_LICENSE "Apache-2.0")
 set(CPACK_RPM_PACKAGE_GROUP "Applications/Text")
 
 include(CPack)

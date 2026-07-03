@@ -1,3 +1,15 @@
+# Unit tests (GoogleTest). Add new unit-test sources to this single executable.
+find_package(GTest CONFIG REQUIRED)
+include(GoogleTest)
+
+add_executable(unit_tests
+    unit/json_test.cpp
+)
+target_link_libraries(unit_tests PRIVATE GTest::gtest_main fmt::fmt)
+target_include_directories(unit_tests PRIVATE ${CMAKE_SOURCE_DIR}/src)
+vanillapdf_cli_configure_msvc_runtime(unit_tests)
+gtest_discover_tests(unit_tests)
+
 # CLI integration tests using CTest
 
 # Helpers

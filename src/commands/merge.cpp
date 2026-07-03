@@ -49,7 +49,7 @@ void register_merge(CLI::App& app) {
         try {
             std::exit(run_merge(*opts));
         } catch (const pdf_error& e) {
-            std::cerr << "Error: " << e.what() << "\n";
+            report_error(e);
             std::exit(1);
         }
     });

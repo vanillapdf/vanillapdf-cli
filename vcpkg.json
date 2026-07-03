@@ -27,8 +27,12 @@
             "dependencies": ["spdlog"]
         },
         "fmt": {
-            "description": "fmt for vanillapdf string formatting",
+            "description": "fmt formatting library (used by the CLI and vanillapdf)",
             "dependencies": ["fmt"]
+        },
+        "tests": {
+            "description": "GoogleTest for the CLI unit tests",
+            "dependencies": ["gtest"]
         }
     }
 }
