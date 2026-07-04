@@ -1,23 +1,20 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag to release (e.g. v0.1.0). Must already exist unless dry_run."
+        description: "Tag to create and release (e.g. v0.1.0). Must not exist yet."
         required: true
       dry_run:
-        description: "Build and package only; do not create or upload a release."
+        description: "Build and package only; do not create the tag or the release."
         type: boolean
-        default: false
+        default: true
 
 permissions: {}
 
 env:
-  TAG: ${{ github.event.inputs.tag || github.ref_name }}
+  TAG: ${{ github.event.inputs.tag }}
 
 jobs:
   build:
@@ -92,14 +89,14 @@ jobs:
           if-no-files-found: error
 
   release:
-    name: Create draft release
+    name: Tag and create draft release
     needs: build
     # Skip the whole publish stage on a dry run; the build job still uploads the
     # archives as workflow artifacts for inspection.
-    if: github.event_name != 'workflow_dispatch' || github.event.inputs.dry_run != 'true'
+    if: github.event.inputs.dry_run != 'true'
     runs-on: ubuntu-latest
     permissions:
-      contents: write       # create the release and upload assets
+      contents: write       # push the tag, create the release and upload assets
       id-token: write       # keyless signing for provenance
       attestations: write   # artifact attestations
 
@@ -107,6 +104,17 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+
+      - name: Create and push tag
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "::error::Tag $TAG already exists"
+            exit 1
+          fi
+          git config user.name "vanillapdf-bot"
+          git config user.email "info@vanillapdf.com"
+          git tag "$TAG"
+          git push origin "$TAG"
 
       - name: Download build artifacts
         uses: actions/download-artifact@v4
@@ -118,18 +126,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if gh release view "$TAG" &>/dev/null; then
-            echo "Release $TAG already exists; reusing it."
-          else
-            # Tags containing a hyphen (e.g. v1.0.0-beta.1) are pre-releases.
-            PRERELEASE=""
-            [[ "$TAG" == *-* ]] && PRERELEASE="--prerelease"
-            gh release create "$TAG" \
-              --title "vanillapdf-cli $TAG" \
-              --generate-notes \
-              --draft \
-              $PRERELEASE
-          fi
+          # Tags containing a hyphen (e.g. v1.0.0-beta.1) are pre-releases.
+          PRERELEASE=""
+          [[ "$TAG" == *-* ]] && PRERELEASE="--prerelease"
+          gh release create "$TAG" \
+            --title "vanillapdf-cli $TAG" \
+            --generate-notes \
+            --draft \
+            $PRERELEASE
 
       - name: Upload assets
         env:
