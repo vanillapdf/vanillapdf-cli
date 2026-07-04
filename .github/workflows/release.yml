@@ -7,8 +7,12 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag to release (e.g. v0.1.0). Must already exist."
+        description: "Tag to release (e.g. v0.1.0). Must already exist unless dry_run."
         required: true
+      dry_run:
+        description: "Build and package only; do not create or upload a release."
+        type: boolean
+        default: false
 
 permissions: {}
 
@@ -90,6 +94,9 @@ jobs:
   release:
     name: Create draft release
     needs: build
+    # Skip the whole publish stage on a dry run; the build job still uploads the
+    # archives as workflow artifacts for inspection.
+    if: github.event_name != 'workflow_dispatch' || github.event.inputs.dry_run != 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write       # create the release and upload assets
