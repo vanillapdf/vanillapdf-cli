@@ -111,11 +111,18 @@ install(TARGETS vanillapdf-cli
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
+install(FILES LICENSE README.md
+    DESTINATION ${CMAKE_INSTALL_DOCDIR}
+)
+
 # Packaging
 set(CPACK_PACKAGE_NAME "vanillapdf")
 set(CPACK_PACKAGE_VENDOR "VanillaPDF")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "${PROJECT_DESCRIPTION}")
 set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
+
+# Emit a <archive>.sha256 next to each package (replaces manual sha256sum).
+set(CPACK_PACKAGE_CHECKSUM SHA256)
 
 # DEB
 set(CPACK_DEBIAN_PACKAGE_DEPENDS "libvanillapdf (>= 0.1.0), libfmt10")

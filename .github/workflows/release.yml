@@ -27,11 +27,11 @@ jobs:
           - name: linux-x64
             os: ubuntu-latest
             preset: ci
-            exe: vanillapdf-cli
+            cpack_gen: TGZ
           - name: windows-x64
             os: windows-2025
             preset: ci-windows-static
-            exe: vanillapdf-cli.exe
+            cpack_gen: ZIP
 
     steps:
       - uses: actions/checkout@v7
@@ -59,24 +59,14 @@ jobs:
       - name: Build
         run: cmake --build build --config Release
 
-      - name: Stage archive
+      - name: Package archive
         shell: bash
-        run: |
-          STAGE="vanillapdf-cli-${TAG}-${{ matrix.name }}"
-          mkdir -p "$STAGE"
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            cp "build/Release/${{ matrix.exe }}" "$STAGE/"
-          else
-            cp "build/${{ matrix.exe }}" "$STAGE/"
-          fi
-          cp LICENSE README.md "$STAGE/"
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            7z a "$STAGE.zip" "$STAGE" >/dev/null
-            sha256sum "$STAGE.zip" > "$STAGE.zip.sha256"
-          else
-            tar -czf "$STAGE.tar.gz" "$STAGE"
-            sha256sum "$STAGE.tar.gz" > "$STAGE.tar.gz.sha256"
-          fi
+        run: >
+          cpack --config build/CPackConfig.cmake
+          -G ${{ matrix.cpack_gen }}
+          -C Release
+          -D CPACK_PACKAGE_FILE_NAME="vanillapdf-cli-${TAG}-${{ matrix.name }}"
+          -B "$PWD"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
