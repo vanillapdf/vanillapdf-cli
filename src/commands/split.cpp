@@ -1,6 +1,7 @@
 #include <CLI/CLI.hpp>
 #include <iostream>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -16,48 +17,49 @@ struct SplitOptions {
 };
 
 static int run_split(const SplitOptions& opts) {
-    DocumentPtr in_document;
-    check(Document_Open(opts.input.c_str(), in_document.put()), "Failed to open document");
+    DocumentPtr document;
+    check(Document_Open(opts.input.c_str(), document.put()), "Failed to open document");
 
-    CatalogPtr in_catalog;
-    check(Document_GetCatalog(in_document.get(), in_catalog.put()), "Failed to get catalog");
+    CatalogPtr catalog;
+    check(Document_GetCatalog(document.get(), catalog.put()), "Failed to get catalog");
 
-    PageTreePtr in_pages;
-    check(Catalog_GetPages(in_catalog.get(), in_pages.put()), "Failed to get page tree");
+    PageTreePtr pages;
+    check(Catalog_GetPages(catalog.get(), pages.put()), "Failed to get page tree");
 
     size_type total_pages = 0;
-    check(PageTree_GetPageCount(in_pages.get(), &total_pages), "Failed to get page count");
+    check(PageTree_GetPageCount(pages.get(), &total_pages), "Failed to get page count");
 
-    DocumentPtr out_document;
-    check(Document_Create(opts.output.c_str(), out_document.put()), "Failed to create output document");
-
-    CatalogPtr out_catalog;
-    check(Document_GetCatalog(out_document.get(), out_catalog.put()), "Failed to get output catalog");
-
-    PageTreePtr out_pages;
-    check(Catalog_GetPages(out_catalog.get(), out_pages.put()), "Failed to get output page tree");
-
+    // The 1-based pages to keep. Omitting -p keeps everything (a plain copy).
+    std::set<size_type> keep;
     if (opts.pages.empty()) {
-        for (size_type i = 0; i < total_pages; ++i) {
-            PageObjectPtr page;
-            check(PageTree_GetPage(in_pages.get(), i, page.put()), "Failed to get page");
-            check(PageTree_AppendPage(out_pages.get(), page.get()), "Failed to append page");
+        for (size_type i = 1; i <= total_pages; ++i) {
+            keep.insert(i);
         }
     } else {
         for (int page_num : opts.pages) {
-            auto idx = static_cast<size_type>(page_num - 1);
-            if (idx >= total_pages) {
+            if (page_num < 1 || static_cast<size_type>(page_num) > total_pages) {
                 std::cerr << "Warning: page " << page_num << " out of range (1-" << total_pages << "), skipping\n";
                 continue;
             }
-            PageObjectPtr page;
-            check(PageTree_GetPage(in_pages.get(), idx, page.put()), "Failed to get page");
-            check(PageTree_AppendPage(out_pages.get(), page.get()), "Failed to append page");
+            keep.insert(static_cast<size_type>(page_num));
         }
     }
 
-    check(Document_Save(out_document.get(), opts.output.c_str()), "Failed to save output");
-    std::cerr << "Split to: " << opts.output << "\n";
+    if (keep.empty()) {
+        throw pdf_error(VANILLAPDF_ERROR_PARAMETER_VALUE, "No pages to extract");
+    }
+
+    // Extract by removing the pages we are not keeping (highest first so earlier
+    // indices stay valid). Editing in place keeps the rest of the document and
+    // avoids the blank page that Document_Create would seed.
+    for (size_type i = total_pages; i > 0; --i) {
+        if (keep.find(i) == keep.end()) {
+            check(PageTree_RemovePage(pages.get(), i), "Failed to remove page");
+        }
+    }
+
+    check(Document_Save(document.get(), opts.output.c_str()), "Failed to save output");
+    std::cerr << "Split to: " << opts.output << " (" << keep.size() << " pages)\n";
 
     return 0;
 }
