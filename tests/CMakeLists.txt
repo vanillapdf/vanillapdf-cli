@@ -17,6 +17,15 @@ gtest_discover_tests(unit_tests)
 add_test(NAME cli_version COMMAND vanillapdf-cli --version)
 add_test(NAME cli_help COMMAND vanillapdf-cli --help)
 
+# Informational flags must fire standalone (no subcommand) and print their content.
+# The regex guards against the callback silently not running (e.g. if it were
+# evaluated after the require_subcommand check instead of on parse).
+add_test(NAME cli_copyright COMMAND vanillapdf-cli --copyright)
+set_tests_properties(cli_copyright PROPERTIES PASS_REGULAR_EXPRESSION "Apache License")
+
+add_test(NAME cli_about COMMAND vanillapdf-cli --about)
+set_tests_properties(cli_about PROPERTIES PASS_REGULAR_EXPRESSION "github.com/sponsors/vanillapdf")
+
 # Missing required args should fail
 add_test(NAME cli_no_args COMMAND vanillapdf-cli)
 set_tests_properties(cli_no_args PROPERTIES WILL_FAIL TRUE)

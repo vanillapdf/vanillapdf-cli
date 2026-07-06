@@ -42,11 +42,11 @@ int main(int argc, char** argv) {
     app.add_flag_callback("--copyright", []() {
         std::cout << copyright_notice;
         std::exit(0);
-    }, "Show copyright and license information");
+    }, "Show copyright and license information")->trigger_on_parse();
     app.add_flag_callback("--about", []() {
         std::cout << about_notice;
         std::exit(0);
-    }, "Show project information and links");
+    }, "Show project information and links")->trigger_on_parse();
     app.require_subcommand(1);
     app.fallthrough();
 
