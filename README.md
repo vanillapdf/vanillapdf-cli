@@ -101,6 +101,7 @@ vanillapdf-cli validate document.pdf
 ```
 --version          Show version
 --copyright        Show license information
+--about            Show project information and links (homepage, repo, sponsor)
 -v, --verbose      Show detailed error output
 --log-level LEVEL  Library log level: off critical error warning info debug trace
 ```
@@ -341,6 +342,8 @@ Full documentation is hosted on **[Read the Docs](https://vanillapdf-cli.readthe
 | [Installation](https://vanillapdf-cli.readthedocs.io/installation) | Homebrew, deb/rpm, and build from source |
 | [Commands](https://vanillapdf-cli.readthedocs.io/commands/) | Full reference for every command |
 | [Building from Source](https://vanillapdf-cli.readthedocs.io/building) | CMake presets and build options |
+
+Runnable workflow scripts (batch merge, compress, sign/verify, validate) live in the [`examples/`](examples/) directory.
 
 ## Contributing
 

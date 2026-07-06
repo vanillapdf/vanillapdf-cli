@@ -23,6 +23,17 @@ static constexpr const char* copyright_notice =
     "Licensed under the Apache License, Version 2.0\n"
     "https://www.apache.org/licenses/LICENSE-2.0\n";
 
+static constexpr const char* about_notice =
+    "vanillapdf-cli " VANILLAPDF_CLI_VERSION "\n"
+    "Command-line tool for PDF manipulation, built on vanillapdf.\n"
+    "\n"
+    "Homepage:   https://vanillapdf.com\n"
+    "Repository: https://github.com/vanillapdf/vanillapdf-cli\n"
+    "Issues:     https://github.com/vanillapdf/vanillapdf-cli/issues\n"
+    "Sponsor:    https://github.com/sponsors/vanillapdf\n"
+    "\n"
+    "Copyright 2026 Vanilla.PDF Labs - Apache License, Version 2.0\n";
+
 int main(int argc, char** argv) {
     Logging_SetSeverity(LoggingSeverity_Off);
 
@@ -32,6 +43,10 @@ int main(int argc, char** argv) {
         std::cout << copyright_notice;
         std::exit(0);
     }, "Show copyright and license information");
+    app.add_flag_callback("--about", []() {
+        std::cout << about_notice;
+        std::exit(0);
+    }, "Show project information and links");
     app.require_subcommand(1);
     app.fallthrough();
 
