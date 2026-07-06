@@ -20,6 +20,10 @@ struct SignAddOptions {
     std::string key_file;
     std::string password;
     std::string digest = "sha256";
+    std::string name;
+    std::string reason;
+    std::string location;
+    bool no_signing_time = false;  // by default the signing time is set to now
 };
 
 struct SignListOptions {
@@ -57,6 +61,18 @@ static MessageDigestAlgorithmType parse_digest(const std::string& name) {
     throw pdf_error(VANILLAPDF_ERROR_PARAMETER_VALUE, "Unknown digest: " + name);
 }
 
+// Set an optional literal-string field on the signature settings when the value
+// is non-empty.
+static void set_optional_signature_string(
+        DocumentSignatureSettingsHandle* settings, const std::string& value,
+        error_type (*setter)(DocumentSignatureSettingsHandle*, LiteralStringObjectHandle*),
+        const char* context) {
+    if (value.empty()) return;
+    LiteralStringObjectPtr str;
+    check(LiteralStringObject_CreateFromDecodedString(value.c_str(), str.put()), context);
+    check(setter(settings, str.get()), context);
+}
+
 static int run_sign_add(const SignAddOptions& opts) {
     DocumentPtr document;
     check(Document_Open(opts.input.c_str(), document.put()), "Failed to open document");
@@ -74,6 +90,20 @@ static int run_sign_add(const SignAddOptions& opts) {
           "Failed to set digest algorithm");
     check(DocumentSignatureSettings_SetSigningKey(settings.get(), signing_key.get()),
           "Failed to set signing key");
+
+    set_optional_signature_string(settings.get(), opts.name,
+                                  DocumentSignatureSettings_SetName, "Failed to set signer name");
+    set_optional_signature_string(settings.get(), opts.reason,
+                                  DocumentSignatureSettings_SetReason, "Failed to set reason");
+    set_optional_signature_string(settings.get(), opts.location,
+                                  DocumentSignatureSettings_SetLocation, "Failed to set location");
+
+    if (!opts.no_signing_time) {
+        DatePtr now;
+        check(Date_CreateCurrent(now.put()), "Failed to create signing time");
+        check(DocumentSignatureSettings_SetSigningTime(settings.get(), now.get()),
+              "Failed to set signing time");
+    }
 
     FilePtr dest_file;
     check(File_Create(opts.output.c_str(), dest_file.put()), "Failed to create output file");
@@ -566,6 +596,11 @@ void register_sign(CLI::App& app) {
                         "Message digest algorithm for signing (default: sha256)")
         ->check(CLI::IsMember({"md2", "md4", "md5", "sha1", "sha224", "sha256",
                                 "sha384", "sha512", "mdc2", "ripemd160", "whirlpool"}));
+    add_cmd->add_option("--name", add_opts->name, "Signer name recorded in the signature");
+    add_cmd->add_option("--reason", add_opts->reason, "Reason for signing");
+    add_cmd->add_option("--location", add_opts->location, "Location of signing");
+    add_cmd->add_flag("--no-signing-time", add_opts->no_signing_time,
+                      "Do not record a signing time (recorded as the current time by default)");
 
     add_cmd->callback([add_opts]() {
         try {

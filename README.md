@@ -250,16 +250,18 @@ vanillapdf-cli encrypt remove protected.pdf -o unlocked.pdf -p "open123"
 
 ```
 vanillapdf-cli sign add    <input> -o <output> -k <key.p12> [-p <password>]
+    [--name <name>] [--reason <reason>] [--location <location>] [--no-signing-time]
 vanillapdf-cli sign list   <input> [--json]
 vanillapdf-cli sign verify <input> [-c <cert.pem>] [--json]
 vanillapdf-cli sign remove <input> -o <output>   # not yet supported
 ```
 
-Signs using a PKCS#12 certificate (`.p12` / `.pfx`). The `list` subcommand shows Name, Reason, Location, Contact Info, and Signing Time for each signature (with `--json` output); `verify` checks each signature against the system trust store (or a certificate passed with `-c`) and also supports `--json`.
+Signs using a PKCS#12 certificate (`.p12` / `.pfx`). `--name`, `--reason`, and `--location` are recorded in the signature (and shown by `sign list`); the signing time is set to the current time unless `--no-signing-time` is given. The `list` subcommand shows Name, Reason, Location, Contact Info, and Signing Time for each signature (with `--json` output); `verify` checks each signature against the system trust store (or a certificate passed with `-c`) and also supports `--json`.
 
 ```sh
-# Sign a document
-vanillapdf-cli sign add contract.pdf -o contract-signed.pdf -k my-cert.p12 -p "passphrase"
+# Sign a document with signer metadata
+vanillapdf-cli sign add contract.pdf -o contract-signed.pdf -k my-cert.p12 -p "passphrase" \
+    --name "Jane Smith" --reason "Approved" --location "London, UK"
 
 # Inspect signatures
 vanillapdf-cli sign list contract-signed.pdf

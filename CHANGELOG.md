@@ -23,9 +23,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `--bits` (AES 128/256, default 256; RC4 40/128), and `--allow` to grant
   specific document permissions (print, copy, modify, etc.).
 - `sign add` / `sign list` / `sign verify` — apply, list, and verify digital
-  signatures using PKCS#12 certificates. `sign list` shows the signing time and
-  supports `--json`; `sign verify` also supports `--json`. Listing tolerates a
-  malformed signature (reported as an error entry) instead of aborting.
+  signatures using PKCS#12 certificates. `sign add` records `--name`, `--reason`,
+  and `--location`, and stamps the signing time (unless `--no-signing-time`).
+  `sign list` shows those fields and the signing time and supports `--json`;
+  `sign verify` also supports `--json`. Listing tolerates a malformed signature
+  (reported as an error entry) instead of aborting.
 - `validate` — validate PDF file structure (header, cross-reference tables,
   trailer), reporting Info / Warning / Error issues, with `--strict` and
   `--json` options.

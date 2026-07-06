@@ -142,6 +142,19 @@ set_tests_properties(cli_sign_list_json PROPERTIES
     FIXTURES_REQUIRED SIGNED_FOR_LIST
     PASS_REGULAR_EXPRESSION "\"signatures\"")
 
+# sign add with metadata, then confirm sign list reads it back
+add_test(NAME cli_sign_add_metadata_setup
+    COMMAND vanillapdf-cli sign add "${SIGN_TEST_PDF}"
+            -o "${CMAKE_BINARY_DIR}/test_sign_meta.pdf" -k "${SIGN_TEST_KEY}"
+            --name "Jane Smith" --reason "Approved" --location "London")
+set_tests_properties(cli_sign_add_metadata_setup PROPERTIES FIXTURES_SETUP SIGNED_META)
+
+add_test(NAME cli_sign_add_metadata_roundtrip
+    COMMAND vanillapdf-cli sign list "${CMAKE_BINARY_DIR}/test_sign_meta.pdf")
+set_tests_properties(cli_sign_add_metadata_roundtrip PROPERTIES
+    FIXTURES_REQUIRED SIGNED_META
+    PASS_REGULAR_EXPRESSION "Name: Jane Smith")
+
 # Fixture-based encrypt tests
 set(ENCRYPT_TEST_PDF "${CMAKE_CURRENT_LIST_DIR}/fixtures/minimal.pdf")
 
