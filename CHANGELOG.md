@@ -10,7 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `info` — display file metadata (title, author, subject, keywords, creator,
-  producer) and page count, with UTF-8 text-string decoding.
+  producer) and page count, with UTF-8 text-string decoding and optional
+  `--json` output.
 - `merge` — combine multiple PDFs into a single document.
 - `split` — extract selected pages (1-based) into a new PDF.
 - `rotate` — rotate pages by 90 / 180 / 270 degrees, cumulative with existing

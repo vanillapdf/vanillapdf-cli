@@ -113,10 +113,10 @@ Errors go to `stderr`; the process exits non-zero on failure. Input files are po
 ### `info`
 
 ```
-vanillapdf-cli info <input>
+vanillapdf-cli info <input> [--json]
 ```
 
-Prints metadata (title, author, subject, keywords, creator, producer) and page count.
+Prints metadata (title, author, subject, keywords, creator, producer) and page count. Pass `--json` for machine-readable output.
 
 ```sh
 vanillapdf-cli info annual-report.pdf
@@ -131,6 +131,24 @@ Subject:   Financial results
 Keywords:  N/A
 Creator:   LibreOffice
 Producer:  vanillapdf 2.2.0
+```
+
+```sh
+vanillapdf-cli info annual-report.pdf --json
+```
+
+```json
+{
+  "file": "annual-report.pdf",
+  "pdf_version": "1.7",
+  "pages": 42,
+  "title": "Annual Report 2025",
+  "author": "Jane Smith",
+  "subject": "Financial results",
+  "keywords": null,
+  "creator": "LibreOffice",
+  "producer": "vanillapdf 2.2.0"
+}
 ```
 
 ---

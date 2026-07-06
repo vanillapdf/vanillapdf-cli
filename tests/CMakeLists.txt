@@ -123,6 +123,15 @@ add_test(NAME cli_sign_add_sha1
             -o "${CMAKE_BINARY_DIR}/test_sign_sha1.pdf"
             -k "${SIGN_TEST_KEY}" --digest sha1)
 
+# Fixture-based info tests
+set(INFO_TEST_PDF "${CMAKE_CURRENT_LIST_DIR}/fixtures/minimal.pdf")
+
+add_test(NAME cli_info_minimal COMMAND vanillapdf-cli info "${INFO_TEST_PDF}")
+set_tests_properties(cli_info_minimal PROPERTIES PASS_REGULAR_EXPRESSION "Pages: 1")
+
+add_test(NAME cli_info_minimal_json COMMAND vanillapdf-cli info "${INFO_TEST_PDF}" --json)
+set_tests_properties(cli_info_minimal_json PROPERTIES PASS_REGULAR_EXPRESSION "\"pages\": 1")
+
 # validate
 add_test(NAME cli_validate_no_args COMMAND vanillapdf-cli validate)
 set_tests_properties(cli_validate_no_args PROPERTIES WILL_FAIL TRUE)
