@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 🔒 Report a Security Vulnerability
+    url: https://github.com/vanillapdf/vanillapdf-cli/security/advisories/new
+    about: Please report security issues privately, not as a public issue.
+  - name: 📫 General Contact / Support
+    url: https://vanillapdf.com/contact/
+    about: Use this link for general questions, support, or commercial inquiries.

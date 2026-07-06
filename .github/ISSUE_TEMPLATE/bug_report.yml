@@ -1,0 +1,74 @@
+name: 🐛 Bug Report
+description: Report something that isn't working as expected
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a bug. Please fill out the following form carefully.
+
+        For security vulnerabilities, do **not** file a public issue — see
+        [SECURITY.md](https://github.com/vanillapdf/vanillapdf-cli/blob/main/SECURITY.md).
+
+  - type: input
+    id: version
+    attributes:
+      label: vanillapdf-cli Version
+      description: Output of `vanillapdf-cli --version` (CLI and linked library version).
+      placeholder: "e.g. 0.1.0"
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      placeholder: "e.g. Windows 11, Ubuntu 22.04, macOS 14"
+    validations:
+      required: true
+
+  - type: input
+    id: install
+    attributes:
+      label: Install Method
+      placeholder: "e.g. Homebrew, apt, dnf, built from source"
+    validations:
+      required: false
+
+  - type: textarea
+    id: command
+    attributes:
+      label: Command
+      description: The exact command you ran.
+      placeholder: "vanillapdf-cli merge a.pdf b.pdf -o out.pdf"
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what happened vs. what you expected.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: List the steps to reproduce the bug.
+      placeholder: |
+        1. Run command ...
+        2. Observe behavior ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Add any logs (run with `-v` for detail), screenshots, or a sample PDF (anonymized if needed) that may help.
+    validations:
+      required: false

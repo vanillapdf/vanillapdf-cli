@@ -68,6 +68,13 @@ int main(int argc, char** argv) {
     vanillapdf::cli::commands::register_sign(app);
     vanillapdf::cli::commands::register_validate(app);
 
+    // With no arguments, show the full help rather than the terse
+    // "A subcommand is required" error. Still exit non-zero, since no work was done.
+    if (argc == 1) {
+        std::cout << app.help();
+        return 1;
+    }
+
     CLI11_PARSE(app, argc, argv);
     return 0;
 }
