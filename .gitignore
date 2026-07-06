@@ -1,4 +1,6 @@
 build/
+build-static/
+build-static-*.log
 install/
 CMakeUserPresets.json
 
