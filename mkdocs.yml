@@ -39,6 +39,7 @@ nav:
       - info: commands/info.md
       - merge: commands/merge.md
       - split: commands/split.md
+      - pages: commands/pages.md
       - rotate: commands/rotate.md
       - compress: commands/compress.md
       - encrypt: commands/encrypt.md

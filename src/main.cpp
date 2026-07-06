@@ -62,6 +62,7 @@ int main(int argc, char** argv) {
     vanillapdf::cli::commands::register_info(app);
     vanillapdf::cli::commands::register_merge(app);
     vanillapdf::cli::commands::register_split(app);
+    vanillapdf::cli::commands::register_pages(app);
     vanillapdf::cli::commands::register_rotate(app);
     vanillapdf::cli::commands::register_compress(app);
     vanillapdf::cli::commands::register_encrypt(app);
