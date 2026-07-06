@@ -63,6 +63,7 @@ add_executable(vanillapdf-cli
     src/commands/info.cpp
     src/commands/merge.cpp
     src/commands/split.cpp
+    src/commands/pages.cpp
     src/commands/rotate.cpp
     src/commands/compress.cpp
     src/commands/encrypt.cpp

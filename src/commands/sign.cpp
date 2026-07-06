@@ -20,16 +20,15 @@ struct SignAddOptions {
     std::string key_file;
     std::string password;
     std::string digest = "sha256";
+    std::string name;
+    std::string reason;
+    std::string location;
+    bool no_signing_time = false;  // by default the signing time is set to now
 };
 
 struct SignListOptions {
     std::string input;
     bool json_output = false;
-};
-
-struct SignRemoveOptions {
-    std::string input;
-    std::string output;
 };
 
 struct SignVerifyOptions {
@@ -57,6 +56,18 @@ static MessageDigestAlgorithmType parse_digest(const std::string& name) {
     throw pdf_error(VANILLAPDF_ERROR_PARAMETER_VALUE, "Unknown digest: " + name);
 }
 
+// Set an optional literal-string field on the signature settings when the value
+// is non-empty.
+static void set_optional_signature_string(
+        DocumentSignatureSettingsHandle* settings, const std::string& value,
+        error_type (*setter)(DocumentSignatureSettingsHandle*, LiteralStringObjectHandle*),
+        const char* context) {
+    if (value.empty()) return;
+    LiteralStringObjectPtr str;
+    check(LiteralStringObject_CreateFromDecodedString(value.c_str(), str.put()), context);
+    check(setter(settings, str.get()), context);
+}
+
 static int run_sign_add(const SignAddOptions& opts) {
     DocumentPtr document;
     check(Document_Open(opts.input.c_str(), document.put()), "Failed to open document");
@@ -74,6 +85,20 @@ static int run_sign_add(const SignAddOptions& opts) {
           "Failed to set digest algorithm");
     check(DocumentSignatureSettings_SetSigningKey(settings.get(), signing_key.get()),
           "Failed to set signing key");
+
+    set_optional_signature_string(settings.get(), opts.name,
+                                  DocumentSignatureSettings_SetName, "Failed to set signer name");
+    set_optional_signature_string(settings.get(), opts.reason,
+                                  DocumentSignatureSettings_SetReason, "Failed to set reason");
+    set_optional_signature_string(settings.get(), opts.location,
+                                  DocumentSignatureSettings_SetLocation, "Failed to set location");
+
+    if (!opts.no_signing_time) {
+        DatePtr now;
+        check(Date_CreateCurrent(now.put()), "Failed to create signing time");
+        check(DocumentSignatureSettings_SetSigningTime(settings.get(), now.get()),
+              "Failed to set signing time");
+    }
 
     FilePtr dest_file;
     check(File_Create(opts.output.c_str(), dest_file.put()), "Failed to create output file");
@@ -294,11 +319,6 @@ static int run_sign_list(const SignListOptions& opts) {
     }
 
     return 0;
-}
-
-static int run_sign_remove(const SignRemoveOptions& /*opts*/) {
-    std::cerr << "Error: Signature removal is not yet supported by the vanillapdf library\n";
-    return 1;
 }
 
 struct SigVerifyResult {
@@ -566,6 +586,11 @@ void register_sign(CLI::App& app) {
                         "Message digest algorithm for signing (default: sha256)")
         ->check(CLI::IsMember({"md2", "md4", "md5", "sha1", "sha224", "sha256",
                                 "sha384", "sha512", "mdc2", "ripemd160", "whirlpool"}));
+    add_cmd->add_option("--name", add_opts->name, "Signer name recorded in the signature");
+    add_cmd->add_option("--reason", add_opts->reason, "Reason for signing");
+    add_cmd->add_option("--location", add_opts->location, "Location of signing");
+    add_cmd->add_flag("--no-signing-time", add_opts->no_signing_time,
+                      "Do not record a signing time (recorded as the current time by default)");
 
     add_cmd->callback([add_opts]() {
         try {
@@ -587,24 +612,6 @@ void register_sign(CLI::App& app) {
     list_cmd->callback([list_opts]() {
         try {
             std::exit(run_sign_list(*list_opts));
-        } catch (const pdf_error& e) {
-            report_error(e);
-            std::exit(1);
-        }
-    });
-
-    // sign remove
-    auto rm_opts = std::make_shared<SignRemoveOptions>();
-    auto* rm_cmd = cmd->add_subcommand("remove", "Remove digital signatures from a PDF document");
-    rm_cmd->add_option("input", rm_opts->input, "Input PDF file")
-        ->required()
-        ->check(CLI::ExistingFile);
-    rm_cmd->add_option("-o,--output", rm_opts->output, "Output PDF file")
-        ->required();
-
-    rm_cmd->callback([rm_opts]() {
-        try {
-            std::exit(run_sign_remove(*rm_opts));
         } catch (const pdf_error& e) {
             report_error(e);
             std::exit(1);

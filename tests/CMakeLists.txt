@@ -38,6 +38,10 @@ add_test(NAME cli_validate_help COMMAND vanillapdf-cli validate --help)
 add_test(NAME cli_info_help COMMAND vanillapdf-cli info --help)
 add_test(NAME cli_merge_help COMMAND vanillapdf-cli merge --help)
 add_test(NAME cli_split_help COMMAND vanillapdf-cli split --help)
+add_test(NAME cli_pages_help COMMAND vanillapdf-cli pages --help)
+add_test(NAME cli_pages_delete_help COMMAND vanillapdf-cli pages delete --help)
+add_test(NAME cli_pages_reorder_help COMMAND vanillapdf-cli pages reorder --help)
+add_test(NAME cli_pages_insert_help COMMAND vanillapdf-cli pages insert --help)
 add_test(NAME cli_rotate_help COMMAND vanillapdf-cli rotate --help)
 add_test(NAME cli_compress_help COMMAND vanillapdf-cli compress --help)
 add_test(NAME cli_encrypt_help COMMAND vanillapdf-cli encrypt --help)
@@ -48,7 +52,6 @@ add_test(NAME cli_encrypt_add_help COMMAND vanillapdf-cli encrypt add --help)
 add_test(NAME cli_encrypt_remove_help COMMAND vanillapdf-cli encrypt remove --help)
 add_test(NAME cli_sign_add_help COMMAND vanillapdf-cli sign add --help)
 add_test(NAME cli_sign_list_help COMMAND vanillapdf-cli sign list --help)
-add_test(NAME cli_sign_remove_help COMMAND vanillapdf-cli sign remove --help)
 add_test(NAME cli_sign_verify_help COMMAND vanillapdf-cli sign verify --help)
 
 # Missing required arguments should fail
@@ -84,9 +87,6 @@ set_tests_properties(cli_sign_add_no_args PROPERTIES WILL_FAIL TRUE)
 
 add_test(NAME cli_sign_list_no_args COMMAND vanillapdf-cli sign list)
 set_tests_properties(cli_sign_list_no_args PROPERTIES WILL_FAIL TRUE)
-
-add_test(NAME cli_sign_remove_no_args COMMAND vanillapdf-cli sign remove)
-set_tests_properties(cli_sign_remove_no_args PROPERTIES WILL_FAIL TRUE)
 
 add_test(NAME cli_sign_verify_no_args COMMAND vanillapdf-cli sign verify)
 set_tests_properties(cli_sign_verify_no_args PROPERTIES WILL_FAIL TRUE)
@@ -141,6 +141,19 @@ add_test(NAME cli_sign_list_json
 set_tests_properties(cli_sign_list_json PROPERTIES
     FIXTURES_REQUIRED SIGNED_FOR_LIST
     PASS_REGULAR_EXPRESSION "\"signatures\"")
+
+# sign add with metadata, then confirm sign list reads it back
+add_test(NAME cli_sign_add_metadata_setup
+    COMMAND vanillapdf-cli sign add "${SIGN_TEST_PDF}"
+            -o "${CMAKE_BINARY_DIR}/test_sign_meta.pdf" -k "${SIGN_TEST_KEY}"
+            --name "Jane Smith" --reason "Approved" --location "London")
+set_tests_properties(cli_sign_add_metadata_setup PROPERTIES FIXTURES_SETUP SIGNED_META)
+
+add_test(NAME cli_sign_add_metadata_roundtrip
+    COMMAND vanillapdf-cli sign list "${CMAKE_BINARY_DIR}/test_sign_meta.pdf")
+set_tests_properties(cli_sign_add_metadata_roundtrip PROPERTIES
+    FIXTURES_REQUIRED SIGNED_META
+    PASS_REGULAR_EXPRESSION "Name: Jane Smith")
 
 # Fixture-based encrypt tests
 set(ENCRYPT_TEST_PDF "${CMAKE_CURRENT_LIST_DIR}/fixtures/minimal.pdf")
@@ -215,6 +228,58 @@ set_tests_properties(cli_split_page1 PROPERTIES FIXTURES_SETUP SPLIT_P1)
 add_test(NAME cli_split_page1_count COMMAND vanillapdf-cli info "${CMAKE_BINARY_DIR}/test_split_p1.pdf")
 set_tests_properties(cli_split_page1_count PROPERTIES
     FIXTURES_REQUIRED SPLIT_P1 PASS_REGULAR_EXPRESSION "Pages: 1")
+
+# Fixture-based pages tests (3-page fixture)
+set(PAGES_TEST_PDF "${CMAKE_CURRENT_LIST_DIR}/fixtures/three_pages.pdf")
+set(MINIMAL_TEST_PDF "${CMAKE_CURRENT_LIST_DIR}/fixtures/minimal.pdf")
+
+add_test(NAME cli_pages_no_subcommand COMMAND vanillapdf-cli pages)
+set_tests_properties(cli_pages_no_subcommand PROPERTIES WILL_FAIL TRUE)
+
+add_test(NAME cli_pages_delete_no_args COMMAND vanillapdf-cli pages delete)
+set_tests_properties(cli_pages_delete_no_args PROPERTIES WILL_FAIL TRUE)
+
+# delete: 3 pages, remove page 2 -> 2 pages
+add_test(NAME cli_pages_delete
+    COMMAND vanillapdf-cli pages delete "${PAGES_TEST_PDF}"
+            -o "${CMAKE_BINARY_DIR}/test_pages_del.pdf" -p 2)
+set_tests_properties(cli_pages_delete PROPERTIES FIXTURES_SETUP PAGES_DEL)
+add_test(NAME cli_pages_delete_count
+    COMMAND vanillapdf-cli info "${CMAKE_BINARY_DIR}/test_pages_del.pdf")
+set_tests_properties(cli_pages_delete_count PROPERTIES
+    FIXTURES_REQUIRED PAGES_DEL PASS_REGULAR_EXPRESSION "Pages: 2")
+
+# deleting every page must fail
+add_test(NAME cli_pages_delete_all
+    COMMAND vanillapdf-cli pages delete "${PAGES_TEST_PDF}"
+            -o "${CMAKE_BINARY_DIR}/test_pages_delall.pdf" -p 1 2 3)
+set_tests_properties(cli_pages_delete_all PROPERTIES WILL_FAIL TRUE)
+
+# reorder: full permutation preserves the page count
+add_test(NAME cli_pages_reorder
+    COMMAND vanillapdf-cli pages reorder "${PAGES_TEST_PDF}"
+            -o "${CMAKE_BINARY_DIR}/test_pages_reo.pdf" --order 3,1,2)
+set_tests_properties(cli_pages_reorder PROPERTIES FIXTURES_SETUP PAGES_REO)
+add_test(NAME cli_pages_reorder_count
+    COMMAND vanillapdf-cli info "${CMAKE_BINARY_DIR}/test_pages_reo.pdf")
+set_tests_properties(cli_pages_reorder_count PROPERTIES
+    FIXTURES_REQUIRED PAGES_REO PASS_REGULAR_EXPRESSION "Pages: 3")
+
+# reorder with a non-permutation must fail
+add_test(NAME cli_pages_reorder_invalid
+    COMMAND vanillapdf-cli pages reorder "${PAGES_TEST_PDF}"
+            -o "${CMAKE_BINARY_DIR}/test_pages_reobad.pdf" --order 1,2)
+set_tests_properties(cli_pages_reorder_invalid PROPERTIES WILL_FAIL TRUE)
+
+# insert: 3 pages + 1 inserted page -> 4 pages
+add_test(NAME cli_pages_insert
+    COMMAND vanillapdf-cli pages insert "${PAGES_TEST_PDF}"
+            -o "${CMAKE_BINARY_DIR}/test_pages_ins.pdf" --from "${MINIMAL_TEST_PDF}" --at 2)
+set_tests_properties(cli_pages_insert PROPERTIES FIXTURES_SETUP PAGES_INS)
+add_test(NAME cli_pages_insert_count
+    COMMAND vanillapdf-cli info "${CMAKE_BINARY_DIR}/test_pages_ins.pdf")
+set_tests_properties(cli_pages_insert_count PROPERTIES
+    FIXTURES_REQUIRED PAGES_INS PASS_REGULAR_EXPRESSION "Pages: 4")
 
 # validate
 add_test(NAME cli_validate_no_args COMMAND vanillapdf-cli validate)
