@@ -59,6 +59,7 @@ using FieldCollectionPtr = Handle<FieldCollectionHandle, FieldCollection_Release
 using FieldPtr = Handle<FieldHandle, Field_Release>;
 using SignatureFieldPtr = Handle<SignatureFieldHandle, SignatureField_Release>;
 using DigitalSignaturePtr = Handle<DigitalSignatureHandle, DigitalSignature_Release>;
+using DatePtr = Handle<DateHandle, Date_Release>;
 using DocumentSignatureSettingsPtr = Handle<DocumentSignatureSettingsHandle, DocumentSignatureSettings_Release>;
 using DocumentEncryptionSettingsPtr = Handle<DocumentEncryptionSettingsHandle, DocumentEncryptionSettings_Release>;
 

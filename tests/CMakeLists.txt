@@ -123,6 +123,25 @@ add_test(NAME cli_sign_add_sha1
             -o "${CMAKE_BINARY_DIR}/test_sign_sha1.pdf"
             -k "${SIGN_TEST_KEY}" --digest sha1)
 
+# sign list on a freshly-signed document. Guards against a regression where a
+# signature lacking optional fields (Name/Reason/...) aborted the whole listing.
+add_test(NAME cli_sign_list_setup
+    COMMAND vanillapdf-cli sign add "${SIGN_TEST_PDF}"
+            -o "${CMAKE_BINARY_DIR}/test_sign_list.pdf" -k "${SIGN_TEST_KEY}")
+set_tests_properties(cli_sign_list_setup PROPERTIES FIXTURES_SETUP SIGNED_FOR_LIST)
+
+add_test(NAME cli_sign_list_text
+    COMMAND vanillapdf-cli sign list "${CMAKE_BINARY_DIR}/test_sign_list.pdf")
+set_tests_properties(cli_sign_list_text PROPERTIES
+    FIXTURES_REQUIRED SIGNED_FOR_LIST
+    PASS_REGULAR_EXPRESSION "Signatures: 1")
+
+add_test(NAME cli_sign_list_json
+    COMMAND vanillapdf-cli sign list "${CMAKE_BINARY_DIR}/test_sign_list.pdf" --json)
+set_tests_properties(cli_sign_list_json PROPERTIES
+    FIXTURES_REQUIRED SIGNED_FOR_LIST
+    PASS_REGULAR_EXPRESSION "\"signatures\"")
+
 # Fixture-based info tests
 set(INFO_TEST_PDF "${CMAKE_CURRENT_LIST_DIR}/fixtures/minimal.pdf")
 

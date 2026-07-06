@@ -2,8 +2,11 @@
 #include <fstream>
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
+
+#include <fmt/format.h>
 
 #include "commands/commands.hpp"
 #include "utils/encoding.hpp"
@@ -21,6 +24,7 @@ struct SignAddOptions {
 
 struct SignListOptions {
     std::string input;
+    bool json_output = false;
 };
 
 struct SignRemoveOptions {
@@ -80,13 +84,144 @@ static int run_sign_add(const SignAddOptions& opts) {
     return 0;
 }
 
-static void print_optional_sig_field(DigitalSignatureHandle* sig, const char* label,
-                                     error_type (*getter)(DigitalSignatureHandle*, StringObjectHandle**)) {
+// The signature dictionary fields listed by `sign list`, with label and JSON key.
+struct SigField {
+    const char* label;
+    const char* key;
+    error_type (*getter)(DigitalSignatureHandle*, StringObjectHandle**);
+};
+
+static const SigField sig_fields[] = {
+    {"Name",     "name",     DigitalSignature_GetName},
+    {"Reason",   "reason",   DigitalSignature_GetReason},
+    {"Location", "location", DigitalSignature_GetLocation},
+    {"Contact",  "contact",  DigitalSignature_GetContactInfo},
+};
+
+static constexpr int sig_field_count = sizeof(sig_fields) / sizeof(sig_fields[0]);
+
+struct SigListEntry {
+    int index = 0;
+    std::optional<std::string> values[sig_field_count];
+    std::optional<std::string> signing_time;
+    std::optional<std::string> error;  // set when this signature could not be read
+};
+
+// An absent optional signature entry surfaces as OBJECT_MISSING (or
+// OPTIONAL_ENTRY_MISSING); either is a normal "not present", not an error.
+static bool is_absent(error_type err) {
+    return err == VANILLAPDF_ERROR_OBJECT_MISSING
+        || err == VANILLAPDF_ERROR_OPTIONAL_ENTRY_MISSING;
+}
+
+// Read one optional string field. A cleanly-absent entry and an unreadable one
+// both yield nullopt so a single bad field never aborts the listing; a genuine
+// read failure is surfaced under --verbose.
+static std::optional<std::string> get_sig_field(
+        DigitalSignatureHandle* sig, const char* label,
+        error_type (*getter)(DigitalSignatureHandle*, StringObjectHandle**)) {
     StringObjectPtr str;
     error_type err = getter(sig, str.put());
-    if (err == VANILLAPDF_ERROR_OPTIONAL_ENTRY_MISSING) return;
-    check(err, label);
-    std::cout << "    " << label << ": " << to_string_utf8(str.get()) << "\n";
+    if (err == VANILLAPDF_ERROR_SUCCESS) {
+        return to_string_utf8(str.get());
+    }
+    if (!is_absent(err) && vanillapdf::cli::g_verbose) {
+        std::cerr << "Warning: could not read signature " << label << ": "
+                  << vanillapdf::cli::last_error_message() << "\n";
+    }
+    return std::nullopt;
+}
+
+// Format the signature's /M signing time as an ISO 8601 string, or nullopt if
+// absent or unreadable.
+static std::optional<std::string> get_signing_time(DigitalSignatureHandle* sig) {
+    DatePtr date;
+    error_type err = DigitalSignature_GetSigningTime(sig, date.put());
+    if (err != VANILLAPDF_ERROR_SUCCESS) {
+        if (!is_absent(err) && vanillapdf::cli::g_verbose) {
+            std::cerr << "Warning: could not read signing time: "
+                      << vanillapdf::cli::last_error_message() << "\n";
+        }
+        return std::nullopt;
+    }
+
+    integer_type year = 0, month = 0, day = 0, hour = 0, minute = 0, second = 0;
+    check(Date_GetYear(date.get(), &year), "Failed to get signing-time year");
+    check(Date_GetMonth(date.get(), &month), "Failed to get signing-time month");
+    check(Date_GetDay(date.get(), &day), "Failed to get signing-time day");
+    check(Date_GetHour(date.get(), &hour), "Failed to get signing-time hour");
+    check(Date_GetMinute(date.get(), &minute), "Failed to get signing-time minute");
+    check(Date_GetSecond(date.get(), &second), "Failed to get signing-time second");
+
+    std::string result =
+        fmt::format("{:04}-{:02}-{:02}T{:02}:{:02}:{:02}", year, month, day, hour, minute, second);
+
+    TimezoneType tz = TimezoneType_Undefined;
+    check(Date_GetTimezone(date.get(), &tz), "Failed to get signing-time timezone");
+    if (tz == TimezoneType_UTC) {
+        result += "Z";
+    } else if (tz == TimezoneType_Later || tz == TimezoneType_Earlier) {
+        integer_type hour_offset = 0, minute_offset = 0;
+        check(Date_GetHourOffset(date.get(), &hour_offset), "Failed to get signing-time hour offset");
+        check(Date_GetMinuteOffset(date.get(), &minute_offset), "Failed to get signing-time minute offset");
+        result += fmt::format("{}{:02}:{:02}", tz == TimezoneType_Later ? '+' : '-',
+                              hour_offset, minute_offset);
+    }
+    return result;
+}
+
+static void print_list_text(const std::string& file, const std::vector<SigListEntry>& sigs) {
+    std::cout << "File: " << file << "\n";
+    for (const auto& e : sigs) {
+        std::cout << "Signature #" << e.index << ":\n";
+        if (e.error) {
+            std::cout << "    <error: " << *e.error << ">\n";
+            continue;
+        }
+        for (int k = 0; k < sig_field_count; ++k) {
+            if (e.values[k]) {
+                std::cout << "    " << sig_fields[k].label << ": " << *e.values[k] << "\n";
+            }
+        }
+        if (e.signing_time) {
+            std::cout << "    Signing Time: " << *e.signing_time << "\n";
+        }
+    }
+    std::cout << "Signatures: " << sigs.size() << "\n";
+}
+
+static void print_list_json(const std::string& file, const std::vector<SigListEntry>& sigs) {
+    std::cout << "{\n";
+    std::cout << "  \"file\": " << json_escape(file) << ",\n";
+    std::cout << "  \"signatures\": [";
+    for (size_t j = 0; j < sigs.size(); ++j) {
+        const auto& e = sigs[j];
+        if (j > 0) std::cout << ",";
+        std::cout << "\n    {\n";
+        std::cout << "      \"index\": " << e.index;
+        for (int k = 0; k < sig_field_count; ++k) {
+            std::cout << ",\n      " << json_escape(sig_fields[k].key) << ": ";
+            if (e.values[k]) {
+                std::cout << json_escape(*e.values[k]);
+            } else {
+                std::cout << "null";
+            }
+        }
+        std::cout << ",\n      \"signing_time\": ";
+        if (e.signing_time) {
+            std::cout << json_escape(*e.signing_time);
+        } else {
+            std::cout << "null";
+        }
+        std::cout << ",\n      \"error\": ";
+        if (e.error) {
+            std::cout << json_escape(*e.error);
+        } else {
+            std::cout << "null";
+        }
+        std::cout << "\n    }";
+    }
+    std::cout << "\n  ]\n}\n";
 }
 
 static int run_sign_list(const SignListOptions& opts) {
@@ -96,51 +231,67 @@ static int run_sign_list(const SignListOptions& opts) {
     CatalogPtr catalog;
     check(Document_GetCatalog(document.get(), catalog.put()), "Failed to get catalog");
 
+    std::vector<SigListEntry> sigs;
+
     InteractiveFormPtr acro_form;
     error_type form_err = Catalog_GetAcroForm(catalog.get(), acro_form.put());
-    if (form_err == VANILLAPDF_ERROR_OPTIONAL_ENTRY_MISSING) {
-        std::cout << "File: " << opts.input << "\n";
-        std::cout << "Signatures: 0\n";
-        return 0;
+    if (form_err != VANILLAPDF_ERROR_OPTIONAL_ENTRY_MISSING) {
+        check(form_err, "Failed to get interactive form");
+
+        FieldCollectionPtr fields;
+        check(InteractiveForm_GetFields(acro_form.get(), fields.put()), "Failed to get fields");
+
+        size_type field_count = 0;
+        check(FieldCollection_GetSize(fields.get(), &field_count), "Failed to get field count");
+
+        int sig_index = 0;
+        for (size_type i = 0; i < field_count; ++i) {
+            FieldPtr field;
+            check(FieldCollection_At(fields.get(), i, field.put()), "Failed to get field");
+
+            FieldType type = FieldType_Undefined;
+            check(Field_GetType(field.get(), &type), "Failed to get field type");
+
+            if (type != FieldType_Signature) continue;
+
+            SigListEntry entry;
+            bool is_signed = true;
+
+            // A malformed signature is reported as an error entry rather than
+            // aborting the whole listing.
+            try {
+                SignatureFieldPtr sig_field;
+                check(Field_ToSignature(field.get(), sig_field.put()),
+                      "Failed to convert to signature field");
+
+                DigitalSignaturePtr sig;
+                error_type sig_err = SignatureField_GetValue(sig_field.get(), sig.put());
+                if (sig_err == VANILLAPDF_ERROR_OPTIONAL_ENTRY_MISSING) {
+                    // Unsigned signature field (no value) — not counted.
+                    is_signed = false;
+                } else {
+                    check(sig_err, "Failed to get signature value");
+                    for (int k = 0; k < sig_field_count; ++k) {
+                        entry.values[k] = get_sig_field(sig.get(), sig_fields[k].label, sig_fields[k].getter);
+                    }
+                    entry.signing_time = get_signing_time(sig.get());
+                }
+            } catch (const pdf_error& e) {
+                entry.error = e.what();
+            }
+
+            if (!is_signed) continue;
+
+            entry.index = ++sig_index;
+            sigs.push_back(entry);
+        }
     }
-    check(form_err, "Failed to get interactive form");
 
-    FieldCollectionPtr fields;
-    check(InteractiveForm_GetFields(acro_form.get(), fields.put()), "Failed to get fields");
-
-    size_type field_count = 0;
-    check(FieldCollection_GetSize(fields.get(), &field_count), "Failed to get field count");
-
-    std::cout << "File: " << opts.input << "\n";
-
-    int sig_index = 0;
-    for (size_type i = 0; i < field_count; ++i) {
-        FieldPtr field;
-        check(FieldCollection_At(fields.get(), i, field.put()), "Failed to get field");
-
-        FieldType type = FieldType_Undefined;
-        check(Field_GetType(field.get(), &type), "Failed to get field type");
-
-        if (type != FieldType_Signature) continue;
-
-        SignatureFieldPtr sig_field;
-        check(Field_ToSignature(field.get(), sig_field.put()), "Failed to convert to signature field");
-
-        DigitalSignaturePtr sig;
-        error_type sig_err = SignatureField_GetValue(sig_field.get(), sig.put());
-        if (sig_err == VANILLAPDF_ERROR_OPTIONAL_ENTRY_MISSING) continue;
-        check(sig_err, "Failed to get signature value");
-
-        ++sig_index;
-        std::cout << "Signature #" << sig_index << ":\n";
-
-        print_optional_sig_field(sig.get(), "Name", DigitalSignature_GetName);
-        print_optional_sig_field(sig.get(), "Reason", DigitalSignature_GetReason);
-        print_optional_sig_field(sig.get(), "Location", DigitalSignature_GetLocation);
-        print_optional_sig_field(sig.get(), "Contact", DigitalSignature_GetContactInfo);
+    if (opts.json_output) {
+        print_list_json(opts.input, sigs);
+    } else {
+        print_list_text(opts.input, sigs);
     }
-
-    std::cout << "Signatures: " << sig_index << "\n";
 
     return 0;
 }
@@ -431,6 +582,7 @@ void register_sign(CLI::App& app) {
     list_cmd->add_option("input", list_opts->input, "Input PDF file")
         ->required()
         ->check(CLI::ExistingFile);
+    list_cmd->add_flag("--json", list_opts->json_output, "Output results as JSON");
 
     list_cmd->callback([list_opts]() {
         try {

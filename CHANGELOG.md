@@ -21,7 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `encrypt add` / `encrypt remove` — add or remove password encryption
   (AES, 128-bit key) with user and optional owner passwords.
 - `sign add` / `sign list` / `sign verify` — apply, list, and verify digital
-  signatures using PKCS#12 certificates. `sign verify` supports `--json` output.
+  signatures using PKCS#12 certificates. `sign list` shows the signing time and
+  supports `--json`; `sign verify` also supports `--json`. Listing tolerates a
+  malformed signature (reported as an error entry) instead of aborting.
 - `validate` — validate PDF file structure (header, cross-reference tables,
   trailer), reporting Info / Warning / Error issues, with `--strict` and
   `--json` options.
