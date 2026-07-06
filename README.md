@@ -1,15 +1,22 @@
-# vanillapdf-cli
+# vanillapdf-cli — PDF manipulation from the command line
 
-**Command-line tool for PDF manipulation — merge, split, rotate, encrypt, sign, and more.**
+<div align="center">
 
-Built on [vanillapdf](https://vanillapdf.com), a cross-platform PDF library with a clean C API.
+| Distribution | CI & Quality | License |
+|:---:|:---:|:---:|
+| [![Docs](https://readthedocs.org/projects/vanillapdf-cli/badge/?version=latest)](https://vanillapdf-cli.readthedocs.io/) | [![Compatibility](https://github.com/vanillapdf/vanillapdf-cli/actions/workflows/compat-vanillapdf-main.yml/badge.svg)](https://github.com/vanillapdf/vanillapdf-cli/actions/workflows/compat-vanillapdf-main.yml) [![Sanity check](https://github.com/vanillapdf/vanillapdf-cli/actions/workflows/sanity-check.yml/badge.svg)](https://github.com/vanillapdf/vanillapdf-cli/actions/workflows/sanity-check.yml) | [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE) |
 
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Compatibility CI](https://github.com/vanillapdf/vanillapdf-cli/actions/workflows/compat-vanillapdf-main.yml/badge.svg)](https://github.com/vanillapdf/vanillapdf-cli/actions/workflows/compat-vanillapdf-main.yml)
+</div>
 
----
+**vanillapdf-cli** is a fast, cross-platform command-line tool for inspecting and transforming PDF documents. It's built on [vanillapdf](https://github.com/vanillapdf/vanillapdf), a modern C++17 PDF library with a clean, ABI-stable C API — so every operation runs through the same battle-tested engine, with no runtime dependencies to install.
 
-## Installation
+- 📄 **Inspect & transform** — read metadata, merge, split, rotate, and compress
+- 🔒 **Encrypt & decrypt** — AES 128-bit with user and owner passwords
+- 🔏 **Sign & verify** — apply and validate digital signatures from PKCS#12 keys
+- 🩺 **Validate structure** — walk the xref/trailer and report malformed files
+- ⚙️ **Scriptable** — clean stdout/stderr separation, JSON output, meaningful exit codes
+
+## Install
 
 ### Homebrew (macOS / Linux)
 
@@ -39,9 +46,7 @@ cmake --build build
 cmake --install build
 ```
 
-> See [Building from source](https://vanillapdf-cli.readthedocs.io/building) for all options including static builds and system-package builds.
-
----
+See [Building from source](https://vanillapdf-cli.readthedocs.io/building) for all options, including static builds and system-package builds.
 
 ## Quick start
 
@@ -67,14 +72,12 @@ vanillapdf-cli encrypt add document.pdf -o secured.pdf -p "my-password"
 # Sign with a PKCS#12 certificate
 vanillapdf-cli sign add document.pdf -o signed.pdf -k cert.p12 -p "key-password"
 
-# List signatures in a PDF
-vanillapdf-cli sign list signed.pdf
-
 # Verify signatures (uses system trust store)
 vanillapdf-cli sign verify signed.pdf
-```
 
----
+# Validate file structure
+vanillapdf-cli validate document.pdf
+```
 
 ## Commands
 
@@ -85,12 +88,12 @@ vanillapdf-cli sign verify signed.pdf
 | [`split`](#split) | Extract pages into a new PDF |
 | [`rotate`](#rotate) | Rotate pages by 90 / 180 / 270 degrees |
 | [`compress`](#compress) | Compress and optimise a PDF |
-| [`encrypt add`](#encrypt-add--remove) | Add password encryption |
+| [`encrypt add`](#encrypt-add--remove) | Add password encryption (AES 128-bit) |
 | [`encrypt remove`](#encrypt-add--remove) | Remove encryption |
-| [`sign add`](#sign-add--list--remove--verify) | Apply a digital signature |
-| [`sign list`](#sign-add--list--remove--verify) | List signatures |
-| [`sign remove`](#sign-add--list--remove--verify) | Remove signatures *(not yet supported)* |
-| [`sign verify`](#sign-add--list--remove--verify) | Verify signatures |
+| [`sign add`](#sign-add--list--verify) | Apply a digital signature |
+| [`sign list`](#sign-add--list--verify) | List signatures |
+| [`sign verify`](#sign-add--list--verify) | Verify signatures |
+| [`sign remove`](#sign-add--list--verify) | Remove signatures *(not yet supported)* |
 | [`validate`](#validate) | Validate PDF file structure |
 
 ### Global flags
@@ -101,6 +104,8 @@ vanillapdf-cli sign verify signed.pdf
 -v, --verbose      Show detailed error output
 --log-level LEVEL  Library log level: off critical error warning info debug trace
 ```
+
+Errors go to `stderr`; the process exits non-zero on failure. Input files are positional arguments; output files use `-o` / `--output`. Page numbers are 1-based.
 
 ---
 
@@ -200,7 +205,7 @@ vanillapdf-cli encrypt add <input> -o <output> -p <user-password> [--owner-passw
 vanillapdf-cli encrypt remove <input> -o <output> -p <password>
 ```
 
-Encrypts using AES-128. The user password is required to open the file; the owner password (optional) is required to edit it.
+Encrypts using AES with a 128-bit key. The user password is required to open the file; the owner password (optional) is required to edit it.
 
 ```sh
 # Add encryption
@@ -212,7 +217,7 @@ vanillapdf-cli encrypt remove protected.pdf -o unlocked.pdf -p "open123"
 
 ---
 
-### `sign add` / `list` / `remove` / `verify`
+### `sign add` / `list` / `verify`
 
 ```
 vanillapdf-cli sign add    <input> -o <output> -k <key.p12> [-p <password>]
@@ -221,7 +226,7 @@ vanillapdf-cli sign verify <input> [-c <cert.pem>] [--json]
 vanillapdf-cli sign remove <input> -o <output>   # not yet supported
 ```
 
-Signs using a PKCS#12 certificate (`.p12` / `.pfx`). The `list` subcommand shows Name, Reason, Location, and Contact Info for each signature.
+Signs using a PKCS#12 certificate (`.p12` / `.pfx`). The `list` subcommand shows Name, Reason, Location, and Contact Info for each signature; `verify` checks each signature against the system trust store (or a certificate passed with `-c`) and supports `--json` output.
 
 ```sh
 # Sign a document
@@ -264,7 +269,13 @@ Errors: 0  Warnings: 1
 [Warning] TrailerSizeMismatch (5): Trailer /Size does not match the number of xref entries
 ```
 
----
+## Platforms
+
+| Platform | Compilers | Architectures |
+|----------|-----------|---------------|
+| Windows | Visual Studio 2022+ | x64, ARM64 |
+| Linux | GCC 8.1+, Clang 10+ | x64, ARM64 |
+| macOS | AppleClang 15+ (Xcode 15) | x64, ARM64 |
 
 ## Building from source
 
@@ -306,16 +317,52 @@ cmake --build build
 | `VANILLAPDF_GIT_TAG` | `main` | vanillapdf branch/tag for FetchContent |
 | `VANILLAPDF_CLI_ENABLE_TESTS` | `ON` | Build integration tests |
 
----
+## Non-Goals
+
+vanillapdf-cli operates on **PDF document structure**. It is not a renderer: it does not rasterize pages, display PDFs, or perform OCR. For viewing or extracting rendered text, pair it with a dedicated renderer and use this tool for the structural operations around it.
+
+Current known limitations:
+
+- `sign remove` is not yet implemented
+- No CRL/OCSP revocation checking during signature verification
+- No PAdES compliance levels or RFC 3161 timestamp validation
+
+## Versioning
+
+vanillapdf-cli follows [Semantic Versioning](https://semver.org/). See [CHANGELOG.md](CHANGELOG.md) for the release history, and check the running version with `vanillapdf-cli --version` (which also reports the linked vanillapdf library version).
 
 ## Documentation
 
-Full documentation is available at **[vanillapdf-cli.readthedocs.io](https://vanillapdf-cli.readthedocs.io)**.
+Full documentation is hosted on **[Read the Docs](https://vanillapdf-cli.readthedocs.io/)**.
 
----
+| Guide | Description |
+|-------|-------------|
+| [Home](https://vanillapdf-cli.readthedocs.io/) | Overview and quick start |
+| [Installation](https://vanillapdf-cli.readthedocs.io/installation) | Homebrew, deb/rpm, and build from source |
+| [Commands](https://vanillapdf-cli.readthedocs.io/commands/) | Full reference for every command |
+| [Building from Source](https://vanillapdf-cli.readthedocs.io/building) | CMake presets and build options |
+
+## Contributing
+
+We welcome pull requests, feature proposals, and bug reports.
+
+- [Contributing Guidelines](CONTRIBUTING.md) — build/test workflow, command pattern, DCO
+- [Changelog](CHANGELOG.md) — release history
+- [Security Policy](SECURITY.md) — responsible disclosure (please do **not** open a public issue)
+
+All changes require a branch and pull request; `main` is protected.
 
 ## License
 
-Apache License 2.0 — see [LICENSE](LICENSE) for details.
+vanillapdf-cli is licensed under the [Apache 2.0 License](LICENSE).
 
 Copyright 2026 Vanilla.PDF Labs
+
+## Contact & Support
+
+| Channel | Link |
+|---------|------|
+| Email | info@vanillapdf.com |
+| Website | [vanillapdf.com](https://vanillapdf.com) |
+| Issues | [GitHub Issues](https://github.com/vanillapdf/vanillapdf-cli/issues) |
+| Sponsor | [GitHub Sponsors](https://github.com/sponsors/vanillapdf) |
