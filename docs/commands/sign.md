@@ -11,7 +11,8 @@ Apply a digital signature using a PKCS#12 certificate.
 ### Synopsis
 
 ```
-vanillapdf-cli sign add <input> -o <output> -k <key-file> [-p <password>]
+vanillapdf-cli sign add <input> -o <output> -k <key-file> [-p <password>] [--digest <alg>]
+    [--name <name>] [--reason <reason>] [--location <location>] [--no-signing-time]
 ```
 
 ### Arguments
@@ -22,12 +23,22 @@ vanillapdf-cli sign add <input> -o <output> -k <key-file> [-p <password>]
 | `-o`, `--output` | Yes | Signed output file |
 | `-k`, `--key` | Yes | PKCS#12 key file (`.p12` or `.pfx`) |
 | `-p`, `--password` | No | Key file password |
+| `--digest` | No | Message digest algorithm (default `sha256`) |
+| `--name` | No | Signer name recorded in the signature |
+| `--reason` | No | Reason for signing |
+| `--location` | No | Location of signing |
+| `--no-signing-time` | No | Do not record a signing time (set to the current time by default) |
+
+The `--name`, `--reason`, and `--location` values are read back by
+[`sign list`](#list). The signing time (`/M`) is set to the current time unless
+`--no-signing-time` is passed.
 
 ### Example
 
 ```sh
 vanillapdf-cli sign add contract.pdf -o contract-signed.pdf \
-    -k my-certificate.p12 -p "passphrase"
+    -k my-certificate.p12 -p "passphrase" \
+    --name "Jane Smith" --reason "Approved" --location "London, UK"
 ```
 
 ---
