@@ -5,6 +5,8 @@
 #include <optional>
 #include <string>
 
+#include <fmt/chrono.h>
+
 #include "commands/commands.hpp"
 #include "utils/handles.hpp"
 
@@ -41,36 +43,10 @@ static const MetadataField metadata_fields[] = {
 };
 
 // Format the current local time as a PDF date string: D:YYYYMMDDHHmmSSOHH'mm'
-// (PDF 32000-1:2008, 7.9.4). O is the relationship of local time to UTC.
+// (PDF 32000-1:2008, 7.9.4). Emitted in UTC, so the timezone is a literal
+// "+00'00'" and no local-offset calculation is needed.
 static std::string current_pdf_date() {
-    std::time_t now = std::time(nullptr);
-    std::tm local_tm{};
-    std::tm utc_tm{};
-#if defined(_WIN32)
-    localtime_s(&local_tm, &now);
-    gmtime_s(&utc_tm, &now);
-#else
-    localtime_r(&now, &local_tm);
-    gmtime_r(&now, &utc_tm);
-#endif
-
-    // Offset of local time from UTC, in minutes.
-    std::time_t local_epoch = std::mktime(&local_tm);
-    std::time_t utc_epoch = std::mktime(&utc_tm);
-    int offset_min = static_cast<int>(std::difftime(local_epoch, utc_epoch) / 60);
-
-    char sign = '+';
-    if (offset_min < 0) {
-        sign = '-';
-        offset_min = -offset_min;
-    }
-
-    char buffer[32];
-    std::snprintf(buffer, sizeof(buffer), "D:%04d%02d%02d%02d%02d%02d%c%02d'%02d'",
-                  local_tm.tm_year + 1900, local_tm.tm_mon + 1, local_tm.tm_mday,
-                  local_tm.tm_hour, local_tm.tm_min, local_tm.tm_sec,
-                  sign, offset_min / 60, offset_min % 60);
-    return buffer;
+    return fmt::format("D:{:%Y%m%d%H%M%S}+00'00'", fmt::gmtime(std::time(nullptr)));
 }
 
 // Resolve a trailer entry (a direct dictionary or an indirect reference to one)
