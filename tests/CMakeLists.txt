@@ -48,7 +48,6 @@ add_test(NAME cli_encrypt_add_help COMMAND vanillapdf-cli encrypt add --help)
 add_test(NAME cli_encrypt_remove_help COMMAND vanillapdf-cli encrypt remove --help)
 add_test(NAME cli_sign_add_help COMMAND vanillapdf-cli sign add --help)
 add_test(NAME cli_sign_list_help COMMAND vanillapdf-cli sign list --help)
-add_test(NAME cli_sign_remove_help COMMAND vanillapdf-cli sign remove --help)
 add_test(NAME cli_sign_verify_help COMMAND vanillapdf-cli sign verify --help)
 
 # Missing required arguments should fail
@@ -84,9 +83,6 @@ set_tests_properties(cli_sign_add_no_args PROPERTIES WILL_FAIL TRUE)
 
 add_test(NAME cli_sign_list_no_args COMMAND vanillapdf-cli sign list)
 set_tests_properties(cli_sign_list_no_args PROPERTIES WILL_FAIL TRUE)
-
-add_test(NAME cli_sign_remove_no_args COMMAND vanillapdf-cli sign remove)
-set_tests_properties(cli_sign_remove_no_args PROPERTIES WILL_FAIL TRUE)
 
 add_test(NAME cli_sign_verify_no_args COMMAND vanillapdf-cli sign verify)
 set_tests_properties(cli_sign_verify_no_args PROPERTIES WILL_FAIL TRUE)
