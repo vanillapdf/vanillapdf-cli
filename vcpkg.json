@@ -31,8 +31,8 @@
             "dependencies": ["fmt"]
         },
         "tests": {
-            "description": "GoogleTest for the CLI unit tests",
-            "dependencies": ["gtest"]
+            "description": "GoogleTest and nlohmann-json for the CLI unit tests",
+            "dependencies": ["gtest", "nlohmann-json"]
         }
     }
 }
