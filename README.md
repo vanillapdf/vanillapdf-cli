@@ -86,6 +86,7 @@ vanillapdf-cli validate document.pdf
 | [`info`](#info) | Display file metadata and page count |
 | [`merge`](#merge) | Combine multiple PDFs into one |
 | [`split`](#split) | Extract pages into a new PDF |
+| [`pages`](#pages) | Delete, reorder, or insert pages |
 | [`rotate`](#rotate) | Rotate pages by 90 / 180 / 270 degrees |
 | [`compress`](#compress) | Compress and optimise a PDF |
 | [`encrypt add`](#encrypt-add--remove) | Add password encryption (AES-256 default) |
@@ -180,6 +181,29 @@ vanillapdf-cli split report.pdf -o even-pages.pdf -p 2 4 6
 
 # Copy all pages (effectively a duplicate)
 vanillapdf-cli split report.pdf -o copy.pdf
+```
+
+---
+
+### `pages`
+
+```
+vanillapdf-cli pages delete  <input> -o <output> -p <pages>...
+vanillapdf-cli pages reorder <input> -o <output> --order <permutation>
+vanillapdf-cli pages insert  <input> -o <output> --from <other.pdf> [--at <n>]
+```
+
+Page-level editing that preserves the rest of the document. Page numbers are 1-based.
+
+```sh
+# Delete pages 2 and 5
+vanillapdf-cli pages delete report.pdf -o trimmed.pdf -p 2 5
+
+# Reorder a 3-page document (must be a full permutation)
+vanillapdf-cli pages reorder report.pdf -o reordered.pdf --order 3,1,2
+
+# Insert cover.pdf before page 1 (omit --at to append at the end)
+vanillapdf-cli pages insert report.pdf -o with-cover.pdf --from cover.pdf --at 1
 ```
 
 ---

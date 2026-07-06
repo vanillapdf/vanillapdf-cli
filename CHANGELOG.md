@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `--json` output.
 - `merge` — combine multiple PDFs into a single document.
 - `split` — extract selected pages (1-based) into a new PDF.
+- `pages` — page-level editing: `delete`, `reorder`, and `insert` pages,
+  preserving the rest of the document.
 - `rotate` — rotate pages by 90 / 180 / 270 degrees, cumulative with existing
   rotation.
 - `compress` — compress and optimise a PDF using vanillapdf's built-in
