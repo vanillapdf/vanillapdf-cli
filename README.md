@@ -93,7 +93,6 @@ vanillapdf-cli validate document.pdf
 | [`sign add`](#sign-add--list--verify) | Apply a digital signature |
 | [`sign list`](#sign-add--list--verify) | List signatures |
 | [`sign verify`](#sign-add--list--verify) | Verify signatures |
-| [`sign remove`](#sign-add--list--verify) | Remove signatures *(not yet supported)* |
 | [`validate`](#validate) | Validate PDF file structure |
 
 ### Global flags
@@ -253,7 +252,6 @@ vanillapdf-cli sign add    <input> -o <output> -k <key.p12> [-p <password>]
     [--name <name>] [--reason <reason>] [--location <location>] [--no-signing-time]
 vanillapdf-cli sign list   <input> [--json]
 vanillapdf-cli sign verify <input> [-c <cert.pem>] [--json]
-vanillapdf-cli sign remove <input> -o <output>   # not yet supported
 ```
 
 Signs using a PKCS#12 certificate (`.p12` / `.pfx`). `--name`, `--reason`, and `--location` are recorded in the signature (and shown by `sign list`); the signing time is set to the current time unless `--no-signing-time` is given. The `list` subcommand shows Name, Reason, Location, Contact Info, and Signing Time for each signature (with `--json` output); `verify` checks each signature against the system trust store (or a certificate passed with `-c`) and also supports `--json`.

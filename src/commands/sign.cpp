@@ -31,11 +31,6 @@ struct SignListOptions {
     bool json_output = false;
 };
 
-struct SignRemoveOptions {
-    std::string input;
-    std::string output;
-};
-
 struct SignVerifyOptions {
     std::string input;
     std::vector<std::string> trusted_certs;
@@ -324,11 +319,6 @@ static int run_sign_list(const SignListOptions& opts) {
     }
 
     return 0;
-}
-
-static int run_sign_remove(const SignRemoveOptions& /*opts*/) {
-    std::cerr << "Error: Signature removal is not yet supported by the vanillapdf library\n";
-    return 1;
 }
 
 struct SigVerifyResult {
@@ -622,24 +612,6 @@ void register_sign(CLI::App& app) {
     list_cmd->callback([list_opts]() {
         try {
             std::exit(run_sign_list(*list_opts));
-        } catch (const pdf_error& e) {
-            report_error(e);
-            std::exit(1);
-        }
-    });
-
-    // sign remove
-    auto rm_opts = std::make_shared<SignRemoveOptions>();
-    auto* rm_cmd = cmd->add_subcommand("remove", "Remove digital signatures from a PDF document");
-    rm_cmd->add_option("input", rm_opts->input, "Input PDF file")
-        ->required()
-        ->check(CLI::ExistingFile);
-    rm_cmd->add_option("-o,--output", rm_opts->output, "Output PDF file")
-        ->required();
-
-    rm_cmd->callback([rm_opts]() {
-        try {
-            std::exit(run_sign_remove(*rm_opts));
         } catch (const pdf_error& e) {
             report_error(e);
             std::exit(1);

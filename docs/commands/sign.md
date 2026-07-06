@@ -110,13 +110,6 @@ signature could not be read, `error` holds the reason and the other fields are
 
 ---
 
-## remove {#remove}
-
-!!! warning "Not yet supported"
-    Signature removal is not yet implemented in the vanillapdf library.
-
----
-
 ## verify {#verify}
 
 Verify the digital signatures in a PDF using system or custom trusted certificates.

@@ -38,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Not yet supported
 
-- `sign remove` — placeholder subcommand; removing signatures is not yet
-  implemented.
+- Removing signatures (`sign remove`) — the vanillapdf library exposes no
+  signature-removal API yet, so the command is not offered.
 
 [Unreleased]: https://github.com/vanillapdf/vanillapdf-cli/commits/main

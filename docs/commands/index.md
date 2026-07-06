@@ -11,7 +11,6 @@
 | [`encrypt remove`](encrypt.md#remove) | Remove encryption |
 | [`sign add`](sign.md#add) | Apply a digital signature (PKCS#12) |
 | [`sign list`](sign.md#list) | List signatures in a PDF |
-| [`sign remove`](sign.md#remove) | Remove signatures *(not yet supported)* |
 | [`validate`](validate.md) | Validate PDF file structure |
 
 ## Conventions
