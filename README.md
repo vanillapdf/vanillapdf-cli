@@ -91,6 +91,7 @@ vanillapdf-cli sign verify signed.pdf
 | [`sign list`](#sign-add--list--remove--verify) | List signatures |
 | [`sign remove`](#sign-add--list--remove--verify) | Remove signatures *(not yet supported)* |
 | [`sign verify`](#sign-add--list--remove--verify) | Verify signatures |
+| [`validate`](#validate) | Validate PDF file structure |
 
 ### Global flags
 
@@ -240,6 +241,27 @@ Signature #1:
     Reason: Approved
     Location: London, UK
 Signatures: 1
+```
+
+---
+
+### `validate`
+
+```
+vanillapdf-cli validate <input> [--strict] [--json]
+```
+
+Checks the structural integrity of a PDF — header, cross-reference tables, and trailer — reporting each issue as `Info`, `Warning`, or `Error`. The file is not modified. Exits non-zero when errors are found, or when warnings are found and `--strict` is set. Use `--json` for machine-readable output.
+
+```sh
+vanillapdf-cli validate report.pdf
+```
+
+```
+File: report.pdf
+Valid: yes
+Errors: 0  Warnings: 1
+[Warning] TrailerSizeMismatch (5): Trailer /Size does not match the number of xref entries
 ```
 
 ---
