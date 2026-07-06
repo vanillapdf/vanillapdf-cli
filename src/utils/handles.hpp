@@ -71,6 +71,11 @@ using IntegerObjectPtr = Handle<IntegerObjectHandle, IntegerObject_Release>;
 using ObjectPtr = Handle<ObjectHandle, Object_Release>;
 using StringObjectPtr = Handle<StringObjectHandle, StringObject_Release>;
 using LiteralStringObjectPtr = Handle<LiteralStringObjectHandle, LiteralStringObject_Release>;
+using IndirectReferenceObjectPtr = Handle<IndirectReferenceObjectHandle, IndirectReferenceObject_Release>;
+using XrefChainPtr = Handle<XrefChainHandle, XrefChain_Release>;
+using XrefChainIteratorPtr = Handle<XrefChainIteratorHandle, XrefChainIterator_Release>;
+using XrefPtr = Handle<XrefHandle, Xref_Release>;
+using XrefUsedEntryPtr = Handle<XrefUsedEntryHandle, XrefUsedEntry_Release>;
 
 // Signature verification handles
 using ByteRangeCollectionPtr = Handle<ByteRangeCollectionHandle, ByteRangeCollection_Release>;

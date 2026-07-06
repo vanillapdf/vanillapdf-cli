@@ -6,6 +6,7 @@ namespace CLI { class App; }
 namespace vanillapdf::cli::commands {
 
 void register_info(CLI::App& app);
+void register_metadata(CLI::App& app);
 void register_merge(CLI::App& app);
 void register_split(CLI::App& app);
 void register_pages(CLI::App& app);
