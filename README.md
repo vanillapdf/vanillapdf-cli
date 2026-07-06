@@ -113,10 +113,10 @@ Errors go to `stderr`; the process exits non-zero on failure. Input files are po
 ### `info`
 
 ```
-vanillapdf-cli info <input>
+vanillapdf-cli info <input> [--json]
 ```
 
-Prints metadata (title, author, subject, keywords, creator, producer) and page count.
+Prints metadata (title, author, subject, keywords, creator, producer) and page count. Pass `--json` for machine-readable output.
 
 ```sh
 vanillapdf-cli info annual-report.pdf
@@ -131,6 +131,24 @@ Subject:   Financial results
 Keywords:  N/A
 Creator:   LibreOffice
 Producer:  vanillapdf 2.2.0
+```
+
+```sh
+vanillapdf-cli info annual-report.pdf --json
+```
+
+```json
+{
+  "file": "annual-report.pdf",
+  "pdf_version": "1.7",
+  "pages": 42,
+  "title": "Annual Report 2025",
+  "author": "Jane Smith",
+  "subject": "Financial results",
+  "keywords": null,
+  "creator": "LibreOffice",
+  "producer": "vanillapdf 2.2.0"
+}
 ```
 
 ---
@@ -232,12 +250,12 @@ vanillapdf-cli encrypt remove protected.pdf -o unlocked.pdf -p "open123"
 
 ```
 vanillapdf-cli sign add    <input> -o <output> -k <key.p12> [-p <password>]
-vanillapdf-cli sign list   <input>
+vanillapdf-cli sign list   <input> [--json]
 vanillapdf-cli sign verify <input> [-c <cert.pem>] [--json]
 vanillapdf-cli sign remove <input> -o <output>   # not yet supported
 ```
 
-Signs using a PKCS#12 certificate (`.p12` / `.pfx`). The `list` subcommand shows Name, Reason, Location, and Contact Info for each signature; `verify` checks each signature against the system trust store (or a certificate passed with `-c`) and supports `--json` output.
+Signs using a PKCS#12 certificate (`.p12` / `.pfx`). The `list` subcommand shows Name, Reason, Location, Contact Info, and Signing Time for each signature (with `--json` output); `verify` checks each signature against the system trust store (or a certificate passed with `-c`) and also supports `--json`.
 
 ```sh
 # Sign a document

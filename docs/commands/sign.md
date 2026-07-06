@@ -39,7 +39,7 @@ List all digital signatures embedded in a PDF.
 ### Synopsis
 
 ```
-vanillapdf-cli sign list <input>
+vanillapdf-cli sign list <input> [--json]
 ```
 
 ### Arguments
@@ -47,6 +47,7 @@ vanillapdf-cli sign list <input>
 | Argument | Required | Description |
 |---|---|---|
 | `input` | Yes | PDF file to inspect |
+| `--json` | No | Emit results as JSON |
 
 ### Example
 
@@ -61,10 +62,40 @@ Signature #1:
     Reason: Approved
     Location: London, UK
     Contact: jane@example.com
+    Signing Time: 2026-05-14T09:30:00+01:00
 Signatures: 1
 ```
 
-Fields not present in the signature (Reason, Location, Contact) are omitted from the output.
+For each signature the Name, Reason, Location, Contact, and Signing Time (`/M`,
+formatted as ISO 8601) are shown; fields not present are omitted. A signature
+that cannot be read is reported as an error entry and does not abort the listing.
+
+### JSON output
+
+```sh
+vanillapdf-cli sign list contract-signed.pdf --json
+```
+
+```json
+{
+  "file": "contract-signed.pdf",
+  "signatures": [
+    {
+      "index": 1,
+      "name": "Jane Smith",
+      "reason": "Approved",
+      "location": "London, UK",
+      "contact": "jane@example.com",
+      "signing_time": "2026-05-14T09:30:00+01:00",
+      "error": null
+    }
+  ]
+}
+```
+
+Absent fields are `null`, so every signature object has the same keys. If a
+signature could not be read, `error` holds the reason and the other fields are
+`null`.
 
 ---
 

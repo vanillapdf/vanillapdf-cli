@@ -10,7 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `info` — display file metadata (title, author, subject, keywords, creator,
-  producer) and page count, with UTF-8 text-string decoding.
+  producer) and page count, with UTF-8 text-string decoding and optional
+  `--json` output.
 - `merge` — combine multiple PDFs into a single document.
 - `split` — extract selected pages (1-based) into a new PDF.
 - `rotate` — rotate pages by 90 / 180 / 270 degrees, cumulative with existing
@@ -22,7 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `--bits` (AES 128/256, default 256; RC4 40/128), and `--allow` to grant
   specific document permissions (print, copy, modify, etc.).
 - `sign add` / `sign list` / `sign verify` — apply, list, and verify digital
-  signatures using PKCS#12 certificates. `sign verify` supports `--json` output.
+  signatures using PKCS#12 certificates. `sign list` shows the signing time and
+  supports `--json`; `sign verify` also supports `--json`. Listing tolerates a
+  malformed signature (reported as an error entry) instead of aborting.
 - `validate` — validate PDF file structure (header, cross-reference tables,
   trailer), reporting Info / Warning / Error issues, with `--strict` and
   `--json` options.

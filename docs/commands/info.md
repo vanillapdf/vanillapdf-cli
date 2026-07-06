@@ -5,7 +5,7 @@ Display metadata and page count for a PDF file.
 ## Synopsis
 
 ```
-vanillapdf-cli info <input>
+vanillapdf-cli info <input> [--json]
 ```
 
 ## Arguments
@@ -13,6 +13,7 @@ vanillapdf-cli info <input>
 | Argument | Required | Description |
 |---|---|---|
 | `input` | Yes | PDF file to inspect |
+| `--json` | No | Emit results as JSON |
 
 ## Example
 
@@ -33,3 +34,26 @@ Producer:  vanillapdf 2.2.0
 ```
 
 Fields not present in the document are shown as `N/A`.
+
+## JSON output
+
+```sh
+vanillapdf-cli info annual-report.pdf --json
+```
+
+```json
+{
+  "file": "annual-report.pdf",
+  "pdf_version": "1.7",
+  "pages": 42,
+  "title": "Annual Report 2025",
+  "author": "Jane Smith",
+  "subject": "Financial results",
+  "keywords": null,
+  "creator": "LibreOffice",
+  "producer": "vanillapdf 2.2.0"
+}
+```
+
+Fields (and `pdf_version`) that are absent or unparseable are emitted as `null`,
+so the object always has the same keys.
