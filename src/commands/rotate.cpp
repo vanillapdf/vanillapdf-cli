@@ -69,19 +69,19 @@ static int run_rotate(const RotateOptions& opts) {
     size_type total_pages = 0;
     check(PageTree_GetPageCount(page_tree.get(), &total_pages), "Failed to get page count");
 
+    // Page indices in the PageTree API are 1-based.
     if (opts.pages.empty()) {
-        for (size_type i = 0; i < total_pages; ++i) {
+        for (size_type i = 1; i <= total_pages; ++i) {
             rotate_page(page_tree.get(), i, opts.angle);
         }
         std::cerr << "Rotated all " << total_pages << " pages by " << opts.angle << " degrees\n";
     } else {
         for (int page_num : opts.pages) {
-            auto idx = static_cast<size_type>(page_num - 1);
-            if (idx >= total_pages) {
+            if (page_num < 1 || static_cast<size_type>(page_num) > total_pages) {
                 std::cerr << "Warning: page " << page_num << " out of range (1-" << total_pages << "), skipping\n";
                 continue;
             }
-            rotate_page(page_tree.get(), idx, opts.angle);
+            rotate_page(page_tree.get(), static_cast<size_type>(page_num), opts.angle);
         }
         std::cerr << "Rotated " << opts.pages.size() << " pages by " << opts.angle << " degrees\n";
     }

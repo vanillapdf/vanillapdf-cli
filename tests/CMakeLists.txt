@@ -212,6 +212,16 @@ set_tests_properties(cli_info_minimal PROPERTIES PASS_REGULAR_EXPRESSION "Pages:
 add_test(NAME cli_info_minimal_json COMMAND vanillapdf-cli info "${INFO_TEST_PDF}" --json)
 set_tests_properties(cli_info_minimal_json PROPERTIES PASS_REGULAR_EXPRESSION "\"pages\": 1")
 
+# Fixture-based rotate test (regression for 1-based page indexing, #31)
+set(ROTATE_TEST_PDF "${CMAKE_CURRENT_LIST_DIR}/fixtures/minimal.pdf")
+
+add_test(NAME cli_rotate_all
+    COMMAND vanillapdf-cli rotate "${ROTATE_TEST_PDF}" -a 90 -o "${CMAKE_BINARY_DIR}/test_rotate.pdf")
+set_tests_properties(cli_rotate_all PROPERTIES FIXTURES_SETUP ROTATE_ALL)
+add_test(NAME cli_rotate_all_count COMMAND vanillapdf-cli info "${CMAKE_BINARY_DIR}/test_rotate.pdf")
+set_tests_properties(cli_rotate_all_count PROPERTIES
+    FIXTURES_REQUIRED ROTATE_ALL PASS_REGULAR_EXPRESSION "Pages: 1")
+
 # Fixture-based pages tests (3-page fixture)
 set(PAGES_TEST_PDF "${CMAKE_CURRENT_LIST_DIR}/fixtures/three_pages.pdf")
 set(MINIMAL_TEST_PDF "${CMAKE_CURRENT_LIST_DIR}/fixtures/minimal.pdf")
