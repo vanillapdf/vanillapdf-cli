@@ -37,23 +37,41 @@ static int run_split(const SplitOptions& opts) {
     PageTreePtr out_pages;
     check(Catalog_GetPages(out_catalog.get(), out_pages.put()), "Failed to get output page tree");
 
+    // Document_Create seeds the new document with a blank page; record how many
+    // pages precede the ones we append so they can be dropped afterwards.
+    size_type seeded_pages = 0;
+    check(PageTree_GetPageCount(out_pages.get(), &seeded_pages), "Failed to get output page count");
+
+    // Page indices in the PageTree API are 1-based.
+    size_type extracted = 0;
     if (opts.pages.empty()) {
-        for (size_type i = 0; i < total_pages; ++i) {
+        for (size_type i = 1; i <= total_pages; ++i) {
             PageObjectPtr page;
             check(PageTree_GetPage(in_pages.get(), i, page.put()), "Failed to get page");
             check(PageTree_AppendPage(out_pages.get(), page.get()), "Failed to append page");
+            ++extracted;
         }
     } else {
         for (int page_num : opts.pages) {
-            auto idx = static_cast<size_type>(page_num - 1);
-            if (idx >= total_pages) {
+            if (page_num < 1 || static_cast<size_type>(page_num) > total_pages) {
                 std::cerr << "Warning: page " << page_num << " out of range (1-" << total_pages << "), skipping\n";
                 continue;
             }
             PageObjectPtr page;
-            check(PageTree_GetPage(in_pages.get(), idx, page.put()), "Failed to get page");
+            check(PageTree_GetPage(in_pages.get(), static_cast<size_type>(page_num), page.put()),
+                  "Failed to get page");
             check(PageTree_AppendPage(out_pages.get(), page.get()), "Failed to append page");
+            ++extracted;
         }
+    }
+
+    if (extracted == 0) {
+        throw pdf_error(VANILLAPDF_ERROR_PARAMETER_VALUE, "No pages to extract");
+    }
+
+    // Drop the seeded blank page(s) that preceded the extracted pages.
+    for (size_type i = seeded_pages; i > 0; --i) {
+        check(PageTree_RemovePage(out_pages.get(), i), "Failed to remove placeholder page");
     }
 
     check(Document_Save(out_document.get(), opts.output.c_str()), "Failed to save output");
