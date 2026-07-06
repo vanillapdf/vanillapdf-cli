@@ -32,6 +32,14 @@ jobs:
             os: windows-2025
             preset: ci-windows-static
             cpack_gen: ZIP
+          - name: macos-arm64
+            os: macos-14
+            preset: ci
+            cpack_gen: TGZ
+          - name: macos-x64
+            os: macos-13
+            preset: ci
+            cpack_gen: TGZ
 
     steps:
       - uses: actions/checkout@v7
@@ -46,8 +54,8 @@ jobs:
           path: |
             ${{ github.workspace }}/build/vcpkg
             ${{ github.workspace }}/build/vcpkg_installed
-          key: vcpkg-release-${{ matrix.preset }}-${{ hashFiles('vcpkg.json') }}
-          restore-keys: vcpkg-release-${{ matrix.preset }}-
+          key: vcpkg-release-${{ matrix.name }}-${{ hashFiles('vcpkg.json') }}
+          restore-keys: vcpkg-release-${{ matrix.name }}-
 
       - name: Configure
         run: >

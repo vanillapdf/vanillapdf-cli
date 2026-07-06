@@ -2,8 +2,9 @@
 
 ## Download a release
 
-Prebuilt archives for Linux (`.tar.gz`) and Windows (`.zip`) are attached to
-every [GitHub release](https://github.com/vanillapdf/vanillapdf-cli/releases).
+Prebuilt archives for Linux and macOS (`.tar.gz`) and Windows (`.zip`) are
+attached to every
+[GitHub release](https://github.com/vanillapdf/vanillapdf-cli/releases).
 Download the archive for your platform, extract it, and run `vanillapdf-cli`.
 
 ## Build from source

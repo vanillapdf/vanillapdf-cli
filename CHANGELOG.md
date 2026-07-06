@@ -41,10 +41,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `--json` options.
 - Global flags: `--version`, `--copyright`, `-v` / `--verbose`, and
   `--log-level`.
-- Distribution: prebuilt Linux (`.tar.gz`) and Windows (`.zip`) archives from a
-  tag-driven release workflow, with build-provenance and SBOM attestation. A
-  Homebrew formula template and Debian/RPM CPack configuration are included as
-  scaffolding for future package-manager channels.
+- Distribution: prebuilt archives from a tag-driven release workflow — Linux
+  x64 and Windows x64, plus macOS x64 and arm64 — with build-provenance and
+  SBOM attestation. A Homebrew formula template and Debian/RPM CPack
+  configuration are included as scaffolding for future package-manager channels.
 
 ### Not yet supported
 
