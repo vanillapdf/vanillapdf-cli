@@ -86,6 +86,7 @@ vanillapdf-cli validate document.pdf
 | [`info`](#info) | Display file metadata and page count |
 | [`merge`](#merge) | Combine multiple PDFs into one |
 | [`split`](#split) | Extract pages into a new PDF |
+| [`pages`](#pages) | Delete, reorder, or insert pages |
 | [`rotate`](#rotate) | Rotate pages by 90 / 180 / 270 degrees |
 | [`compress`](#compress) | Compress and optimise a PDF |
 | [`encrypt add`](#encrypt-add--remove) | Add password encryption (AES-256 default) |
@@ -93,7 +94,6 @@ vanillapdf-cli validate document.pdf
 | [`sign add`](#sign-add--list--verify) | Apply a digital signature |
 | [`sign list`](#sign-add--list--verify) | List signatures |
 | [`sign verify`](#sign-add--list--verify) | Verify signatures |
-| [`sign remove`](#sign-add--list--verify) | Remove signatures *(not yet supported)* |
 | [`validate`](#validate) | Validate PDF file structure |
 
 ### Global flags
@@ -185,6 +185,29 @@ vanillapdf-cli split report.pdf -o copy.pdf
 
 ---
 
+### `pages`
+
+```
+vanillapdf-cli pages delete  <input> -o <output> -p <pages>...
+vanillapdf-cli pages reorder <input> -o <output> --order <permutation>
+vanillapdf-cli pages insert  <input> -o <output> --from <other.pdf> [--at <n>]
+```
+
+Page-level editing that preserves the rest of the document. Page numbers are 1-based.
+
+```sh
+# Delete pages 2 and 5
+vanillapdf-cli pages delete report.pdf -o trimmed.pdf -p 2 5
+
+# Reorder a 3-page document (must be a full permutation)
+vanillapdf-cli pages reorder report.pdf -o reordered.pdf --order 3,1,2
+
+# Insert cover.pdf before page 1 (omit --at to append at the end)
+vanillapdf-cli pages insert report.pdf -o with-cover.pdf --from cover.pdf --at 1
+```
+
+---
+
 ### `rotate`
 
 ```
@@ -250,16 +273,17 @@ vanillapdf-cli encrypt remove protected.pdf -o unlocked.pdf -p "open123"
 
 ```
 vanillapdf-cli sign add    <input> -o <output> -k <key.p12> [-p <password>]
+    [--name <name>] [--reason <reason>] [--location <location>] [--no-signing-time]
 vanillapdf-cli sign list   <input> [--json]
 vanillapdf-cli sign verify <input> [-c <cert.pem>] [--json]
-vanillapdf-cli sign remove <input> -o <output>   # not yet supported
 ```
 
-Signs using a PKCS#12 certificate (`.p12` / `.pfx`). The `list` subcommand shows Name, Reason, Location, Contact Info, and Signing Time for each signature (with `--json` output); `verify` checks each signature against the system trust store (or a certificate passed with `-c`) and also supports `--json`.
+Signs using a PKCS#12 certificate (`.p12` / `.pfx`). `--name`, `--reason`, and `--location` are recorded in the signature (and shown by `sign list`); the signing time is set to the current time unless `--no-signing-time` is given. The `list` subcommand shows Name, Reason, Location, Contact Info, and Signing Time for each signature (with `--json` output); `verify` checks each signature against the system trust store (or a certificate passed with `-c`) and also supports `--json`.
 
 ```sh
-# Sign a document
-vanillapdf-cli sign add contract.pdf -o contract-signed.pdf -k my-cert.p12 -p "passphrase"
+# Sign a document with signer metadata
+vanillapdf-cli sign add contract.pdf -o contract-signed.pdf -k my-cert.p12 -p "passphrase" \
+    --name "Jane Smith" --reason "Approved" --location "London, UK"
 
 # Inspect signatures
 vanillapdf-cli sign list contract-signed.pdf
