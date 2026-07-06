@@ -23,6 +23,17 @@ static constexpr const char* copyright_notice =
     "Licensed under the Apache License, Version 2.0\n"
     "https://www.apache.org/licenses/LICENSE-2.0\n";
 
+static constexpr const char* about_notice =
+    "vanillapdf-cli " VANILLAPDF_CLI_VERSION "\n"
+    "Command-line tool for PDF manipulation, built on vanillapdf.\n"
+    "\n"
+    "Homepage:   https://vanillapdf.com\n"
+    "Repository: https://github.com/vanillapdf/vanillapdf-cli\n"
+    "Issues:     https://github.com/vanillapdf/vanillapdf-cli/issues\n"
+    "Sponsor:    https://github.com/sponsors/vanillapdf\n"
+    "\n"
+    "Copyright 2026 Vanilla.PDF Labs - Apache License, Version 2.0\n";
+
 int main(int argc, char** argv) {
     Logging_SetSeverity(LoggingSeverity_Off);
 
@@ -31,7 +42,11 @@ int main(int argc, char** argv) {
     app.add_flag_callback("--copyright", []() {
         std::cout << copyright_notice;
         std::exit(0);
-    }, "Show copyright and license information");
+    }, "Show copyright and license information")->trigger_on_parse();
+    app.add_flag_callback("--about", []() {
+        std::cout << about_notice;
+        std::exit(0);
+    }, "Show project information and links")->trigger_on_parse();
     app.require_subcommand(1);
     app.fallthrough();
 
@@ -52,6 +67,13 @@ int main(int argc, char** argv) {
     vanillapdf::cli::commands::register_encrypt(app);
     vanillapdf::cli::commands::register_sign(app);
     vanillapdf::cli::commands::register_validate(app);
+
+    // With no arguments, show the full help rather than the terse
+    // "A subcommand is required" error. Still exit non-zero, since no work was done.
+    if (argc == 1) {
+        std::cout << app.help();
+        return 1;
+    }
 
     CLI11_PARSE(app, argc, argv);
     return 0;

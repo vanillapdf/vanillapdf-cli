@@ -19,6 +19,7 @@ Built on [vanillapdf](https://vanillapdf.com), a cross-platform PDF library with
 | [`encrypt remove`](commands/encrypt.md) | Remove encryption |
 | [`sign add`](commands/sign.md) | Apply a digital signature |
 | [`sign list`](commands/sign.md) | List signatures in a PDF |
+| [`validate`](commands/validate.md) | Validate PDF file structure |
 
 ## Quick start
 
