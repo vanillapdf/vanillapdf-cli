@@ -15,10 +15,15 @@ struct MergeOptions {
 };
 
 static int run_merge(const MergeOptions& opts) {
+    // Use the first input as the base document and append the rest. Document_Create
+    // would seed the output with a blank page, leaving a spurious leading page.
     DocumentPtr out_document;
-    check(Document_Create(opts.output.c_str(), out_document.put()), "Failed to create output document");
+    check(Document_Open(opts.inputs.front().c_str(), out_document.put()),
+          "Failed to open " + opts.inputs.front());
+    std::cerr << "Merged: " << opts.inputs.front() << "\n";
 
-    for (const auto& input_path : opts.inputs) {
+    for (size_t i = 1; i < opts.inputs.size(); ++i) {
+        const auto& input_path = opts.inputs[i];
         DocumentPtr in_document;
         check(Document_Open(input_path.c_str(), in_document.put()), "Failed to open " + input_path);
 
