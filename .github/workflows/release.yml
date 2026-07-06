@@ -1,0 +1,158 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to create and release (e.g. v0.1.0). Must not exist yet."
+        required: true
+      dry_run:
+        description: "Build and package only; do not create the tag or the release."
+        type: boolean
+        default: true
+
+permissions: {}
+
+env:
+  TAG: ${{ github.event.inputs.tag }}
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x64
+            os: ubuntu-latest
+            preset: ci
+            cpack_gen: TGZ
+          - name: windows-x64
+            os: windows-2025
+            preset: ci-windows-static
+            cpack_gen: ZIP
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install build tools (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends cmake ninja-build
+
+      - name: Cache vcpkg
+        uses: actions/cache@v6
+        with:
+          path: |
+            ${{ github.workspace }}/build/vcpkg
+            ${{ github.workspace }}/build/vcpkg_installed
+          key: vcpkg-release-${{ matrix.preset }}-${{ hashFiles('vcpkg.json') }}
+          restore-keys: vcpkg-release-${{ matrix.preset }}-
+
+      - name: Configure
+        run: >
+          cmake --preset ${{ matrix.preset }}
+          -DCMAKE_BUILD_TYPE=Release
+          -DBUILD_SHARED_LIBS=OFF
+          -DVANILLAPDF_CLI_ENABLE_TESTS=OFF
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Package archive
+        shell: bash
+        run: >
+          cpack --config build/CPackConfig.cmake
+          -G ${{ matrix.cpack_gen }}
+          -C Release
+          -D CPACK_PACKAGE_FILE_NAME="vanillapdf-cli-${TAG}-${{ matrix.name }}"
+          -B "$PWD"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.name }}
+          path: |
+            vanillapdf-cli-*.zip
+            vanillapdf-cli-*.tar.gz
+            vanillapdf-cli-*.sha256
+          if-no-files-found: error
+
+  release:
+    name: Tag and create draft release
+    needs: build
+    # Skip the whole publish stage on a dry run; the build job still uploads the
+    # archives as workflow artifacts for inspection.
+    if: github.event.inputs.dry_run != 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write       # push the tag, create the release and upload assets
+      id-token: write       # keyless signing for provenance
+      attestations: write   # artifact attestations
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Create and push tag
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "::error::Tag $TAG already exists"
+            exit 1
+          fi
+          git config user.name "vanillapdf-bot"
+          git config user.email "info@vanillapdf.com"
+          git tag "$TAG"
+          git push origin "$TAG"
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create draft release from tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Tags containing a hyphen (e.g. v1.0.0-beta.1) are pre-releases.
+          PRERELEASE=""
+          [[ "$TAG" == *-* ]] && PRERELEASE="--prerelease"
+          gh release create "$TAG" \
+            --title "vanillapdf-cli $TAG" \
+            --generate-notes \
+            --draft \
+            $PRERELEASE
+
+      - name: Upload assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "$TAG" dist/* --clobber
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            dist/*.zip
+            dist/*.tar.gz
+
+      - name: Generate SBOM
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api "repos/${{ github.repository }}/dependency-graph/sbom" \
+            | jq '.sbom' > "vanillapdf-cli-${TAG}-sbom.spdx.json"
+
+      - name: Upload SBOM to release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "$TAG" "vanillapdf-cli-${TAG}-sbom.spdx.json" --clobber
+
+      - name: Attest SBOM
+        uses: actions/attest-sbom@v2
+        with:
+          subject-path: |
+            dist/*.zip
+            dist/*.tar.gz
+          sbom-path: vanillapdf-cli-${{ env.TAG }}-sbom.spdx.json
