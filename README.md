@@ -18,23 +18,9 @@
 
 ## Install
 
-### Homebrew (macOS / Linux)
+### Download a release
 
-```sh
-brew install vanillapdf/tap/vanillapdf-cli
-```
-
-### Debian / Ubuntu
-
-```sh
-sudo apt install vanillapdf-cli
-```
-
-### RPM (Fedora / RHEL)
-
-```sh
-sudo dnf install vanillapdf-cli
-```
+Prebuilt archives for Linux (`.tar.gz`) and Windows (`.zip`) are attached to every [GitHub release](https://github.com/vanillapdf/vanillapdf-cli/releases). Download, extract, and run `vanillapdf-cli`.
 
 ### Build from source
 
@@ -48,42 +34,37 @@ cmake --install build
 
 See [Building from source](https://vanillapdf-cli.readthedocs.io/building) for all options, including static builds and system-package builds.
 
+### Package managers
+
+> **Coming soon.** Homebrew, apt (Debian/Ubuntu), and dnf (Fedora/RHEL) packages are planned for a future release. For now, use a release archive or build from source.
+
 ## Quick start
 
 ```sh
 # Inspect a PDF
 vanillapdf-cli info report.pdf
 
+# Set title and author
+vanillapdf-cli metadata set report.pdf -o tagged.pdf --title "Q4 Report" --author "Jane Smith"
+
 # Merge several PDFs into one
 vanillapdf-cli merge chapter1.pdf chapter2.pdf chapter3.pdf -o book.pdf
 
-# Extract pages 1, 3, and 5
-vanillapdf-cli split document.pdf -o extracted.pdf -p 1 3 5
-
-# Rotate all pages 90 degrees clockwise
-vanillapdf-cli rotate document.pdf -o rotated.pdf -a 90
-
-# Compress a PDF
-vanillapdf-cli compress large.pdf -o small.pdf
-
-# Encrypt with a password
-vanillapdf-cli encrypt add document.pdf -o secured.pdf -p "my-password"
+# Encrypt with a password (AES-256)
+vanillapdf-cli encrypt add report.pdf -o secured.pdf -p "my-password"
 
 # Sign with a PKCS#12 certificate
-vanillapdf-cli sign add document.pdf -o signed.pdf -k cert.p12 -p "key-password"
-
-# Verify signatures (uses system trust store)
-vanillapdf-cli sign verify signed.pdf
-
-# Validate file structure
-vanillapdf-cli validate document.pdf
+vanillapdf-cli sign add report.pdf -o signed.pdf -k cert.p12 -p "key-password"
 ```
+
+See the [command reference](#commands) below for the full list.
 
 ## Commands
 
 | Command | Description |
 |---|---|
 | [`info`](#info) | Display file metadata and page count |
+| [`metadata set`](#metadata-set) | Write document information fields |
 | [`merge`](#merge) | Combine multiple PDFs into one |
 | [`split`](#split) | Extract pages into a new PDF |
 | [`pages`](#pages) | Delete, reorder, or insert pages |
@@ -149,6 +130,28 @@ vanillapdf-cli info annual-report.pdf --json
   "creator": "LibreOffice",
   "producer": "vanillapdf 2.2.0"
 }
+```
+
+---
+
+### `metadata set`
+
+```
+vanillapdf-cli metadata set <input> -o <output>
+    [--title <t>] [--author <a>] [--subject <s>] [--keywords <k>] [--creator <c>] [-p <password>]
+```
+
+Writes the document information dictionary. Each field is three-way: **omit** it to leave the current value untouched, pass an **empty string** to remove it, or pass a **value** to set it. The information dictionary is created if the document has none.
+
+`Producer` and `ModDate` are always stamped by the tool — a full save republishes the document — and are not user-overridable. Encrypted documents can be edited by supplying the password with `-p`.
+
+```sh
+# Set title and author, leave other fields untouched
+vanillapdf-cli metadata set report.pdf -o tagged.pdf \
+    --title "Annual Report 2025" --author "Jane Smith"
+
+# Remove the subject
+vanillapdf-cli metadata set report.pdf -o cleaned.pdf --subject ""
 ```
 
 ---
@@ -391,7 +394,7 @@ Full documentation is hosted on **[Read the Docs](https://vanillapdf-cli.readthe
 | Guide | Description |
 |-------|-------------|
 | [Home](https://vanillapdf-cli.readthedocs.io/) | Overview and quick start |
-| [Installation](https://vanillapdf-cli.readthedocs.io/installation) | Homebrew, deb/rpm, and build from source |
+| [Installation](https://vanillapdf-cli.readthedocs.io/installation) | Release archives and build from source |
 | [Commands](https://vanillapdf-cli.readthedocs.io/commands/) | Full reference for every command |
 | [Building from Source](https://vanillapdf-cli.readthedocs.io/building) | CMake presets and build options |
 

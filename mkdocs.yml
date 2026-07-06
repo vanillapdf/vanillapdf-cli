@@ -37,6 +37,7 @@ nav:
   - Commands:
       - Overview: commands/index.md
       - info: commands/info.md
+      - metadata: commands/metadata.md
       - merge: commands/merge.md
       - split: commands/split.md
       - pages: commands/pages.md

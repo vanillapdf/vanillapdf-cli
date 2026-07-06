@@ -7,11 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-07-07
+
 ### Added
 
 - `info` — display file metadata (title, author, subject, keywords, creator,
   producer) and page count, with UTF-8 text-string decoding and optional
   `--json` output.
+- `metadata set` — write document information fields (title, author, subject,
+  keywords, creator); an empty value removes a field, and the information
+  dictionary is created when absent. `Producer` and `ModDate` are always
+  stamped, and encrypted documents can be edited with `-p` / `--password`.
 - `merge` — combine multiple PDFs into a single document.
 - `split` — extract selected pages (1-based) into a new PDF.
 - `pages` — page-level editing: `delete`, `reorder`, and `insert` pages,
@@ -35,12 +41,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `--json` options.
 - Global flags: `--version`, `--copyright`, `-v` / `--verbose`, and
   `--log-level`.
-- Packaging: Homebrew formula, Debian/RPM packages via CPack, and a
-  tag-driven release workflow.
+- Distribution: prebuilt Linux (`.tar.gz`) and Windows (`.zip`) archives from a
+  tag-driven release workflow, with build-provenance and SBOM attestation. A
+  Homebrew formula template and Debian/RPM CPack configuration are included as
+  scaffolding for future package-manager channels.
 
 ### Not yet supported
 
 - Removing signatures (`sign remove`) — the vanillapdf library exposes no
   signature-removal API yet, so the command is not offered.
 
-[Unreleased]: https://github.com/vanillapdf/vanillapdf-cli/commits/main
+[Unreleased]: https://github.com/vanillapdf/vanillapdf-cli/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/vanillapdf/vanillapdf-cli/releases/tag/v0.1.0

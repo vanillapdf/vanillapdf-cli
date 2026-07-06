@@ -3,6 +3,7 @@
 | Command | Description |
 |---|---|
 | [`info`](info.md) | Display file metadata and page count |
+| [`metadata set`](metadata.md) | Write document information fields |
 | [`merge`](merge.md) | Combine multiple PDFs into one |
 | [`split`](split.md) | Extract pages into a new PDF |
 | [`pages`](pages.md) | Delete, reorder, or insert pages |
