@@ -33,11 +33,11 @@ jobs:
             preset: ci-windows-static
             cpack_gen: ZIP
           - name: macos-arm64
-            os: macos-14
+            os: macos-15
             preset: ci
             cpack_gen: TGZ
           - name: macos-x64
-            os: macos-13
+            os: macos-15-intel
             preset: ci
             cpack_gen: TGZ
 
