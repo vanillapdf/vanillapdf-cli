@@ -60,6 +60,7 @@ int main(int argc, char** argv) {
     });
 
     vanillapdf::cli::commands::register_info(app);
+    vanillapdf::cli::commands::register_metadata(app);
     vanillapdf::cli::commands::register_merge(app);
     vanillapdf::cli::commands::register_split(app);
     vanillapdf::cli::commands::register_pages(app);
