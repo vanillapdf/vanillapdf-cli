@@ -17,8 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rotation.
 - `compress` — compress and optimise a PDF using vanillapdf's built-in
   compression.
-- `encrypt add` / `encrypt remove` — add or remove password encryption
-  (AES, 128-bit key) with user and optional owner passwords.
+- `encrypt add` / `encrypt remove` — add or remove password encryption with
+  user and optional owner passwords. Supports `--algorithm` (AES or legacy RC4),
+  `--bits` (AES 128/256, default 256; RC4 40/128), and `--allow` to grant
+  specific document permissions (print, copy, modify, etc.).
 - `sign add` / `sign list` / `sign verify` — apply, list, and verify digital
   signatures using PKCS#12 certificates. `sign verify` supports `--json` output.
 - `validate` — validate PDF file structure (header, cross-reference tables,

@@ -11,7 +11,7 @@
 **vanillapdf-cli** is a fast, cross-platform command-line tool for inspecting and transforming PDF documents. It's built on [vanillapdf](https://github.com/vanillapdf/vanillapdf), a modern C++17 PDF library with a clean, ABI-stable C API — so every operation runs through the same battle-tested engine, with no runtime dependencies to install.
 
 - 📄 **Inspect & transform** — read metadata, merge, split, rotate, and compress
-- 🔒 **Encrypt & decrypt** — AES 128-bit with user and owner passwords
+- 🔒 **Encrypt & decrypt** — AES-256 (or 128/RC4) with permissions and passwords
 - 🔏 **Sign & verify** — apply and validate digital signatures from PKCS#12 keys
 - 🩺 **Validate structure** — walk the xref/trailer and report malformed files
 - ⚙️ **Scriptable** — clean stdout/stderr separation, JSON output, meaningful exit codes
@@ -88,7 +88,7 @@ vanillapdf-cli validate document.pdf
 | [`split`](#split) | Extract pages into a new PDF |
 | [`rotate`](#rotate) | Rotate pages by 90 / 180 / 270 degrees |
 | [`compress`](#compress) | Compress and optimise a PDF |
-| [`encrypt add`](#encrypt-add--remove) | Add password encryption (AES 128-bit) |
+| [`encrypt add`](#encrypt-add--remove) | Add password encryption (AES-256 default) |
 | [`encrypt remove`](#encrypt-add--remove) | Remove encryption |
 | [`sign add`](#sign-add--list--verify) | Apply a digital signature |
 | [`sign list`](#sign-add--list--verify) | List signatures |
@@ -203,14 +203,24 @@ vanillapdf-cli compress bloated.pdf -o lean.pdf
 
 ```
 vanillapdf-cli encrypt add <input> -o <output> -p <user-password> [--owner-password <password>]
+    [--algorithm aes|rc4] [--bits <n>] [--allow <perms>]
 vanillapdf-cli encrypt remove <input> -o <output> -p <password>
 ```
 
-Encrypts using AES with a 128-bit key. The user password is required to open the file; the owner password (optional) is required to edit it.
+Encrypts with **AES-256 by default**. The user password is required to open the file; the owner password (optional) is required to edit it.
+
+| Option | Description |
+|---|---|
+| `--algorithm` | `aes` (default) or `rc4` (legacy, insecure) |
+| `--bits` | Key length — AES: `128`/`256` (default `256`), RC4: `40`/`128` (default `128`) |
+| `--allow` | Comma-separated permissions to grant; **omit to allow everything**. Values: `print`, `print-high`, `modify`, `copy`, `annotate`, `fill-forms`, `extract`, `assemble` (plus `all`/`none`) |
 
 ```sh
-# Add encryption
+# AES-256 with a user and owner password
 vanillapdf-cli encrypt add confidential.pdf -o protected.pdf -p "open123" --owner-password "edit456"
+
+# Restrict permissions: allow printing and copying only
+vanillapdf-cli encrypt add report.pdf -o restricted.pdf -p "open123" --allow print,copy
 
 # Remove encryption
 vanillapdf-cli encrypt remove protected.pdf -o unlocked.pdf -p "open123"
