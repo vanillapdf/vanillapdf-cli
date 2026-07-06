@@ -5,6 +5,7 @@
 | [`info`](info.md) | Display file metadata and page count |
 | [`merge`](merge.md) | Combine multiple PDFs into one |
 | [`split`](split.md) | Extract pages into a new PDF |
+| [`pages`](pages.md) | Delete, reorder, or insert pages |
 | [`rotate`](rotate.md) | Rotate pages by 90 / 180 / 270 degrees |
 | [`compress`](compress.md) | Compress and optimise a PDF |
 | [`encrypt add`](encrypt.md#add) | Add password encryption (AES 128-bit) |
