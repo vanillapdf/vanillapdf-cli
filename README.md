@@ -350,6 +350,7 @@ Runnable workflow scripts (batch merge, compress, sign/verify, validate) live in
 We welcome pull requests, feature proposals, and bug reports.
 
 - [Contributing Guidelines](CONTRIBUTING.md) — build/test workflow, command pattern, DCO
+- [Code of Conduct](CODE_OF_CONDUCT.md) — community standards
 - [Changelog](CHANGELOG.md) — release history
 - [Security Policy](SECURITY.md) — responsible disclosure (please do **not** open a public issue)
 
