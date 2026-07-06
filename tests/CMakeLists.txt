@@ -155,6 +155,24 @@ set_tests_properties(cli_sign_add_metadata_roundtrip PROPERTIES
     FIXTURES_REQUIRED SIGNED_META
     PASS_REGULAR_EXPRESSION "Name: Jane Smith")
 
+# Fixture-based merge tests (regression for the spurious blank page, #32)
+set(MERGE_TEST_PDF "${CMAKE_CURRENT_LIST_DIR}/fixtures/minimal.pdf")
+
+add_test(NAME cli_merge_two
+    COMMAND vanillapdf-cli merge "${MERGE_TEST_PDF}" "${MERGE_TEST_PDF}"
+            -o "${CMAKE_BINARY_DIR}/test_merge_two.pdf")
+set_tests_properties(cli_merge_two PROPERTIES FIXTURES_SETUP MERGE_TWO)
+add_test(NAME cli_merge_two_count COMMAND vanillapdf-cli info "${CMAKE_BINARY_DIR}/test_merge_two.pdf")
+set_tests_properties(cli_merge_two_count PROPERTIES
+    FIXTURES_REQUIRED MERGE_TWO PASS_REGULAR_EXPRESSION "Pages: 2")
+
+add_test(NAME cli_merge_one
+    COMMAND vanillapdf-cli merge "${MERGE_TEST_PDF}" -o "${CMAKE_BINARY_DIR}/test_merge_one.pdf")
+set_tests_properties(cli_merge_one PROPERTIES FIXTURES_SETUP MERGE_ONE)
+add_test(NAME cli_merge_one_count COMMAND vanillapdf-cli info "${CMAKE_BINARY_DIR}/test_merge_one.pdf")
+set_tests_properties(cli_merge_one_count PROPERTIES
+    FIXTURES_REQUIRED MERGE_ONE PASS_REGULAR_EXPRESSION "Pages: 1")
+
 # Fixture-based encrypt tests
 set(ENCRYPT_TEST_PDF "${CMAKE_CURRENT_LIST_DIR}/fixtures/minimal.pdf")
 
@@ -212,23 +230,15 @@ set_tests_properties(cli_info_minimal PROPERTIES PASS_REGULAR_EXPRESSION "Pages:
 add_test(NAME cli_info_minimal_json COMMAND vanillapdf-cli info "${INFO_TEST_PDF}" --json)
 set_tests_properties(cli_info_minimal_json PROPERTIES PASS_REGULAR_EXPRESSION "\"pages\": 1")
 
-# Fixture-based merge tests (regression for the spurious blank page, #32)
-set(MERGE_TEST_PDF "${CMAKE_CURRENT_LIST_DIR}/fixtures/minimal.pdf")
+# Fixture-based rotate test (regression for 1-based page indexing, #31)
+set(ROTATE_TEST_PDF "${CMAKE_CURRENT_LIST_DIR}/fixtures/minimal.pdf")
 
-add_test(NAME cli_merge_two
-    COMMAND vanillapdf-cli merge "${MERGE_TEST_PDF}" "${MERGE_TEST_PDF}"
-            -o "${CMAKE_BINARY_DIR}/test_merge_two.pdf")
-set_tests_properties(cli_merge_two PROPERTIES FIXTURES_SETUP MERGE_TWO)
-add_test(NAME cli_merge_two_count COMMAND vanillapdf-cli info "${CMAKE_BINARY_DIR}/test_merge_two.pdf")
-set_tests_properties(cli_merge_two_count PROPERTIES
-    FIXTURES_REQUIRED MERGE_TWO PASS_REGULAR_EXPRESSION "Pages: 2")
-
-add_test(NAME cli_merge_one
-    COMMAND vanillapdf-cli merge "${MERGE_TEST_PDF}" -o "${CMAKE_BINARY_DIR}/test_merge_one.pdf")
-set_tests_properties(cli_merge_one PROPERTIES FIXTURES_SETUP MERGE_ONE)
-add_test(NAME cli_merge_one_count COMMAND vanillapdf-cli info "${CMAKE_BINARY_DIR}/test_merge_one.pdf")
-set_tests_properties(cli_merge_one_count PROPERTIES
-    FIXTURES_REQUIRED MERGE_ONE PASS_REGULAR_EXPRESSION "Pages: 1")
+add_test(NAME cli_rotate_all
+    COMMAND vanillapdf-cli rotate "${ROTATE_TEST_PDF}" -a 90 -o "${CMAKE_BINARY_DIR}/test_rotate.pdf")
+set_tests_properties(cli_rotate_all PROPERTIES FIXTURES_SETUP ROTATE_ALL)
+add_test(NAME cli_rotate_all_count COMMAND vanillapdf-cli info "${CMAKE_BINARY_DIR}/test_rotate.pdf")
+set_tests_properties(cli_rotate_all_count PROPERTIES
+    FIXTURES_REQUIRED ROTATE_ALL PASS_REGULAR_EXPRESSION "Pages: 1")
 
 # Fixture-based pages tests (3-page fixture)
 set(PAGES_TEST_PDF "${CMAKE_CURRENT_LIST_DIR}/fixtures/three_pages.pdf")
