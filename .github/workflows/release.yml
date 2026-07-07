@@ -10,11 +10,19 @@ on:
         description: "Build and package only; do not create the tag or the release."
         type: boolean
         default: true
+  # Any PR that touches this workflow triggers a build-and-package-only run so a
+  # broken release pipeline is caught before it is merged. The publish job below
+  # is gated to workflow_dispatch, so a PR can never create a tag or a release.
+  pull_request:
+    paths:
+      - ".github/workflows/release.yml"
 
 permissions: {}
 
 env:
-  TAG: ${{ github.event.inputs.tag }}
+  # workflow_dispatch supplies the real tag; pull_request runs have no input, so
+  # fall back to a placeholder that only affects the package file names.
+  TAG: ${{ github.event.inputs.tag || 'dry-run' }}
 
 jobs:
   build:
@@ -97,9 +105,10 @@ jobs:
   release:
     name: Tag and create draft release
     needs: build
-    # Skip the whole publish stage on a dry run; the build job still uploads the
-    # archives as workflow artifacts for inspection.
-    if: github.event.inputs.dry_run != 'true'
+    # Publish only on a manual dispatch with dry_run disabled. Pull-request runs
+    # (which touch this workflow) and dry runs stop after the build job, which
+    # still uploads the archives as workflow artifacts for inspection.
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run != 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write       # push the tag, create the release and upload assets

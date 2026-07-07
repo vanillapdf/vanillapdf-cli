@@ -40,24 +40,16 @@ See [Building from source](https://vanillapdf-cli.readthedocs.io/building) for a
 
 ## Quick start
 
-```sh
-# Inspect a PDF
-vanillapdf-cli info report.pdf
+| Task | Command |
+|------|---------|
+| Inspect a PDF | `vanillapdf-cli info report.pdf` |
+| Tag metadata | `vanillapdf-cli metadata set report.pdf -o tagged.pdf --title "Q4 Report"` |
+| Merge files | `vanillapdf-cli merge a.pdf b.pdf c.pdf -o book.pdf` |
+| Split out pages | `vanillapdf-cli split report.pdf -o pages.pdf -p 2 4 6` |
+| Encrypt (AES-256) | `vanillapdf-cli encrypt add report.pdf -o secured.pdf -p "my-password"` |
+| Sign with a certificate | `vanillapdf-cli sign add report.pdf -o signed.pdf -k cert.p12` |
 
-# Set title and author
-vanillapdf-cli metadata set report.pdf -o tagged.pdf --title "Q4 Report" --author "Jane Smith"
-
-# Merge several PDFs into one
-vanillapdf-cli merge chapter1.pdf chapter2.pdf chapter3.pdf -o book.pdf
-
-# Encrypt with a password (AES-256)
-vanillapdf-cli encrypt add report.pdf -o secured.pdf -p "my-password"
-
-# Sign with a PKCS#12 certificate
-vanillapdf-cli sign add report.pdf -o signed.pdf -k cert.p12 -p "key-password"
-```
-
-See the [command reference](#commands) below for the full list.
+Each command has a dedicated section with all options in the [command reference](#commands) below.
 
 ## Commands
 

@@ -43,3 +43,8 @@ Dependencies (`vanillapdf`, `CLI11`, `fmt`) come via `find_package`; `fmt` is us
 - Use `#ifndef`/`#define` include guards, not `#pragma once`
 - Guard naming: `VANILLAPDF_CLI_<PATH>_<FILE>_HPP` (e.g., `VANILLAPDF_CLI_UTILS_ERROR_HPP`)
 - Packaging target: deb/rpm via CPack, dependencies come from system packages (not vendored)
+
+## Branching
+
+- Create branches with a `fix/` or `feature/` prefix (e.g., `fix/split-offset`, `feature/metadata-write`).
+- `release/*` branches (e.g., `release/1.0`, `release/2.0`) are **restricted for maintenance**. Do not create or push to them; they are reserved for release maintainers.
