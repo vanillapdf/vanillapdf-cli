@@ -28,6 +28,10 @@ jobs:
   build:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
+    # The top-level permissions are {}; grant just enough for actions/checkout to
+    # read the repository (required on private repos, harmless on public ones).
+    permissions:
+      contents: read
     # Build against the newest SDK but pin the runtime floor: MACOSX_DEPLOYMENT_TARGET
     # is honoured by clang/ld, seeds CMAKE_OSX_DEPLOYMENT_TARGET, and is passed to the
     # vcpkg port builds, so the CLI, the library, and all deps target the same minimum.
