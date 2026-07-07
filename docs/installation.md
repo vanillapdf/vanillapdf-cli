@@ -32,18 +32,16 @@ gh attestation verify vanillapdf-cli-<version>-<platform>.zip \
   --repo vanillapdf/vanillapdf-cli
 ```
 
-!!! warning "Unsigned binaries"
-    Release binaries are **not code-signed or notarized**. Your operating
-    system may warn you before running them:
+!!! note "macOS Gatekeeper"
+    Release binaries are not notarized. On first run macOS may block the binary
+    with *"cannot be opened because the developer cannot be verified."* Clear the
+    quarantine flag after extracting:
 
-    - **Windows** — Defender SmartScreen may show
-      *"Windows protected your PC"*. Click **More info → Run anyway**.
-    - **macOS** — Gatekeeper may block the binary. Run
-      `xattr -d com.apple.quarantine ./vanillapdf-cli` after extracting, or
-      right-click the binary and choose **Open**.
+    ```sh
+    xattr -d com.apple.quarantine ./vanillapdf-cli
+    ```
 
-    This is expected for unsigned software. Signing is planned for a future
-    release.
+    or right-click the binary in Finder and choose **Open**.
 
 ## Build from source
 
