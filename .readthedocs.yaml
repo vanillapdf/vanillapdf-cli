@@ -5,8 +5,11 @@ build:
   tools:
     python: "3.14"
 
-mkdocs:
-  configuration: mkdocs.yml
+sphinx:
+  configuration: docs/conf.py
+  # Treat every Sphinx/MyST warning as an error so no doc defect slips by
+  # silently (broken cross-references, malformed directives, parse failures).
+  fail_on_warning: true
 
 python:
   install:

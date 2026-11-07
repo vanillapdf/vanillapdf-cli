@@ -35,9 +35,10 @@ vanillapdf-cli rotate document.pdf -o adjusted.pdf -a 270 -p first,last
 vanillapdf-cli rotate duplex.pdf -o fixed.pdf -a 180 -p even
 ```
 
-!!! note
-    Rotation is **cumulative** with any existing page rotation stored in the PDF.
-    A page already rotated 90° that receives another 90° rotation will end up at 180°.
+```{note}
+Rotation is **cumulative** with any existing page rotation stored in the PDF.
+A page already rotated 90° that receives another 90° rotation will end up at 180°.
+```
 
 A page outside the document or a malformed range is an error, and no output
 file is written.
