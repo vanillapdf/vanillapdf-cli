@@ -26,7 +26,7 @@ include(cmake/vcpkg_init.cmake)
 
 project(vanillapdf-cli
     VERSION 0.1.0
-    DESCRIPTION "PDF manipulation command-line tool"
+    DESCRIPTION "Command-line toolkit for PDF processing, validation and digital signatures"
     HOMEPAGE_URL "https://github.com/vanillapdf/vanillapdf-cli"
     LANGUAGES CXX
 )
@@ -59,7 +59,7 @@ find_package(fmt CONFIG REQUIRED)
 # Executable
 add_executable(vanillapdf-cli
     src/main.cpp
-    src/commands/commands.hpp
+    src/commands/commands.h
     src/commands/info.cpp
     src/commands/metadata.cpp
     src/commands/merge.cpp
@@ -70,8 +70,14 @@ add_executable(vanillapdf-cli
     src/commands/encrypt.cpp
     src/commands/sign.cpp
     src/commands/validate.cpp
-    src/utils/error.hpp
-    src/utils/page_range.hpp
+    src/utils/encoding.h
+    src/utils/encoding.cpp
+    src/utils/error.h
+    src/utils/error.cpp
+    src/utils/handle_guard.h
+    src/utils/json.h
+    src/utils/json.cpp
+    src/utils/page_range.h
     src/utils/page_range.cpp
 )
 

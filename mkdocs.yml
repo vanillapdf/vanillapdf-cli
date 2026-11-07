@@ -1,6 +1,6 @@
 site_name: vanillapdf-cli
 site_url: https://vanillapdf-cli.readthedocs.io
-site_description: Command-line tool for PDF manipulation built on vanillapdf
+site_description: The command-line toolkit for professional PDF processing, validation and digital signatures
 site_author: Vanilla.PDF Labs
 
 repo_name: vanillapdf/vanillapdf-cli

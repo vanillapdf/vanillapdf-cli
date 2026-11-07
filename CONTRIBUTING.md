@@ -46,8 +46,8 @@ See [Building from source](https://vanillapdf-cli.readthedocs.io/building) for
 all configurations (system packages, existing vcpkg, static builds).
 
 New commands follow the established pattern: each lives in
-`src/commands/<name>.cpp` and exposes a `register_<name>(CLI::App&)` function
-declared in `commands.hpp` and called from `main.cpp`. Please add tests under
+`src/commands/<name>.cpp` and exposes a `register_<name>(CLI::App&, int&)`
+function declared in `commands/commands.h` and called from `main.cpp`. Please add tests under
 `tests/` for new behaviour, and update the docs (`README.md`, `docs/commands/`,
 and `mkdocs.yml`) alongside the code.
 
@@ -64,8 +64,8 @@ and `mkdocs.yml`) alongside the code.
 - 🧠 **Discuss major changes first** — for anything beyond a bug fix, open an
   issue before investing time.
 - 🌳 **Base your PR on `main`.**
-- 🧹 **Match the existing coding style** (C++17, no extensions; `#ifndef` include
-  guards; see [CLAUDE.md](CLAUDE.md) for conventions).
+- 🧹 **Match the existing coding style** (the vanillapdf style: see
+  [.claude/rules/coding-style.md](.claude/rules/coding-style.md)).
 - 🧪 **Ensure tests pass** before submitting.
 - ✅ **Sign your commits** (see DCO below).
 - 📝 **Use clear commit messages**; conventional-commit prefixes (`fix:`,

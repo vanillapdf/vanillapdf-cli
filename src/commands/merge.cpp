@@ -1,63 +1,67 @@
+#include "commands/commands.h"
+#include "utils/error.h"
+#include "utils/handle_guard.h"
+
 #include <CLI/CLI.hpp>
+
 #include <iostream>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "commands/commands.hpp"
-#include "utils/handles.hpp"
+namespace vanillapdf {
+namespace cli {
 
-namespace vanillapdf::cli::commands {
+namespace {
 
 struct MergeOptions {
     std::vector<std::string> inputs;
     std::string output;
 };
 
-static int run_merge(const MergeOptions& opts) {
+int process_merge(const MergeOptions& options) {
     // Use the first input as the base document and append the rest. Document_Create
     // would seed the output with a blank page, leaving a spurious leading page.
-    DocumentPtr out_document;
-    check(Document_Open(opts.inputs.front().c_str(), out_document.put()),
-          "Failed to open " + opts.inputs.front());
-    std::cerr << "Merged: " << opts.inputs.front() << "\n";
+    const auto& base_path = options.inputs.front();
 
-    for (size_t i = 1; i < opts.inputs.size(); ++i) {
-        const auto& input_path = opts.inputs[i];
-        DocumentPtr in_document;
-        check(Document_Open(input_path.c_str(), in_document.put()), "Failed to open " + input_path);
+    DocumentGuard merged_document;
+    THROW_IF_NOT_SUCCESS(Document_Open(base_path.c_str(), merged_document.out()), "Failed to open " + base_path);
+    std::cerr << "Merged: " << base_path << "\n";
 
-        check(Document_AppendDocument(out_document.get(), in_document.get()),
-              "Failed to append " + input_path);
+    for (size_t i = 1; i < options.inputs.size(); i++) {
+        const auto& input_path = options.inputs[i];
+
+        DocumentGuard input_document;
+        THROW_IF_NOT_SUCCESS(Document_Open(input_path.c_str(), input_document.out()), "Failed to open " + input_path);
+        THROW_IF_NOT_SUCCESS(Document_AppendDocument(merged_document, input_document),
+            "Failed to append " + input_path);
 
         std::cerr << "Merged: " << input_path << "\n";
     }
 
-    check(Document_Save(out_document.get(), opts.output.c_str()), "Failed to save output");
-    std::cerr << "Output: " << opts.output << "\n";
+    THROW_IF_NOT_SUCCESS(Document_Save(merged_document, options.output.c_str()), "Failed to save output");
+    std::cerr << "Output: " << options.output << "\n";
 
-    return 0;
+    return VANILLAPDF_CLI_ERROR_SUCCESS;
 }
 
-void register_merge(CLI::App& app) {
-    auto opts = std::make_shared<MergeOptions>();
+} // namespace
 
-    auto* cmd = app.add_subcommand("merge", "Merge multiple PDF files into one");
-    cmd->add_option("inputs", opts->inputs, "Input PDF files")
+void register_merge(CLI::App& app, int& exit_code) {
+    auto options = std::make_shared<MergeOptions>();
+    auto* command = app.add_subcommand("merge", "Merge multiple PDF files into one");
+
+    command->add_option("inputs", options->inputs, "Input PDF files")
         ->required()
         ->expected(-1)
         ->check(CLI::ExistingFile);
-    cmd->add_option("-o,--output", opts->output, "Output PDF file")
+    command->add_option("-o,--output", options->output, "Output PDF file")
         ->required();
 
-    cmd->callback([opts]() {
-        try {
-            std::exit(run_merge(*opts));
-        } catch (const pdf_error& e) {
-            report_error(e);
-            std::exit(1);
-        }
+    command->callback([options, &exit_code]() {
+        exit_code = process_merge(*options);
     });
 }
 
-} // namespace vanillapdf::cli::commands
+} // cli
+} // vanillapdf

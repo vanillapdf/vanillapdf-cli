@@ -1,18 +1,24 @@
+#include "commands/commands.h"
+#include "utils/encoding.h"
+#include "utils/error.h"
+#include "utils/handle_guard.h"
+#include "utils/json.h"
+
 #include <CLI/CLI.hpp>
+#include <fmt/format.h>
+
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <memory>
 #include <optional>
 #include <string>
 #include <vector>
 
-#include <fmt/format.h>
+namespace vanillapdf {
+namespace cli {
 
-#include "commands/commands.hpp"
-#include "utils/encoding.hpp"
-#include "utils/json.hpp"
-
-namespace vanillapdf::cli::commands {
+namespace {
 
 struct SignAddOptions {
     std::string input;
@@ -33,619 +39,732 @@ struct SignListOptions {
 
 struct SignVerifyOptions {
     std::string input;
-    std::vector<std::string> trusted_certs;
-    bool load_system_certs = true;
-    bool skip_cert_validation = false;
+    std::vector<std::string> trusted_certificates;
+    bool load_system_certificates = true;
+    bool skip_certificate_validation = false;
     bool check_signing_time = false;
-    bool allow_weak = false;
+    bool allow_weak_algorithms = false;
     bool json_output = false;
 };
 
-static MessageDigestAlgorithmType parse_digest(const std::string& name) {
-    if (name == "md2")       return MessageDigestAlgorithmType_MD2;
-    if (name == "md4")       return MessageDigestAlgorithmType_MD4;
-    if (name == "md5")       return MessageDigestAlgorithmType_MD5;
-    if (name == "sha1")      return MessageDigestAlgorithmType_SHA1;
-    if (name == "sha224")    return MessageDigestAlgorithmType_SHA224;
-    if (name == "sha256")    return MessageDigestAlgorithmType_SHA256;
-    if (name == "sha384")    return MessageDigestAlgorithmType_SHA384;
-    if (name == "sha512")    return MessageDigestAlgorithmType_SHA512;
-    if (name == "mdc2")      return MessageDigestAlgorithmType_MDC2;
-    if (name == "ripemd160") return MessageDigestAlgorithmType_RIPEMD160;
-    if (name == "whirlpool") return MessageDigestAlgorithmType_WHIRLPOOL;
-    throw pdf_error(VANILLAPDF_ERROR_PARAMETER_VALUE, "Unknown digest: " + name);
-}
+using SignatureSettingsStringSetter = error_type (*)(DocumentSignatureSettingsHandle*, LiteralStringObjectHandle*);
+using SignatureStringGetter = error_type (*)(DigitalSignatureHandle*, StringObjectHandle**);
 
-// Set an optional literal-string field on the signature settings when the value
-// is non-empty.
-static void set_optional_signature_string(
-        DocumentSignatureSettingsHandle* settings, const std::string& value,
-        error_type (*setter)(DocumentSignatureSettingsHandle*, LiteralStringObjectHandle*),
-        const char* context) {
-    if (value.empty()) return;
-    LiteralStringObjectPtr str;
-    check(LiteralStringObject_CreateFromDecodedString(value.c_str(), str.put()), context);
-    check(setter(settings, str.get()), context);
-}
-
-static int run_sign_add(const SignAddOptions& opts) {
-    DocumentPtr document;
-    check(Document_Open(opts.input.c_str(), document.put()), "Failed to open document");
-
-    PKCS12KeyPtr pkcs12;
-    check(PKCS12Key_CreateFromFile(opts.key_file.c_str(), opts.password.c_str(), pkcs12.put()),
-          "Failed to load PKCS#12 key");
-
-    SigningKeyPtr signing_key;
-    check(PKCS12Key_ToSigningKey(pkcs12.get(), signing_key.put()), "Failed to create signing key");
-
-    DocumentSignatureSettingsPtr settings;
-    check(DocumentSignatureSettings_Create(settings.put()), "Failed to create signature settings");
-    check(DocumentSignatureSettings_SetDigest(settings.get(), parse_digest(opts.digest)),
-          "Failed to set digest algorithm");
-    check(DocumentSignatureSettings_SetSigningKey(settings.get(), signing_key.get()),
-          "Failed to set signing key");
-
-    set_optional_signature_string(settings.get(), opts.name,
-                                  DocumentSignatureSettings_SetName, "Failed to set signer name");
-    set_optional_signature_string(settings.get(), opts.reason,
-                                  DocumentSignatureSettings_SetReason, "Failed to set reason");
-    set_optional_signature_string(settings.get(), opts.location,
-                                  DocumentSignatureSettings_SetLocation, "Failed to set location");
-
-    if (!opts.no_signing_time) {
-        DatePtr now;
-        check(Date_CreateCurrent(now.put()), "Failed to create signing time");
-        check(DocumentSignatureSettings_SetSigningTime(settings.get(), now.get()),
-              "Failed to set signing time");
-    }
-
-    FilePtr dest_file;
-    check(File_Create(opts.output.c_str(), dest_file.put()), "Failed to create output file");
-
-    check(Document_Sign(document.get(), dest_file.get(), settings.get()), "Failed to sign document");
-    std::cerr << "Signed: " << opts.output << "\n";
-
-    return 0;
-}
-
-// The signature dictionary fields listed by `sign list`, with label and JSON key.
-struct SigField {
+// The signature dictionary fields listed by `sign list`, with label and JSON key
+struct SignatureField {
     const char* label;
     const char* key;
-    error_type (*getter)(DigitalSignatureHandle*, StringObjectHandle**);
+    SignatureStringGetter getter;
 };
 
-static const SigField sig_fields[] = {
+const SignatureField SIGNATURE_FIELDS[] = {
     {"Name",     "name",     DigitalSignature_GetName},
     {"Reason",   "reason",   DigitalSignature_GetReason},
     {"Location", "location", DigitalSignature_GetLocation},
     {"Contact",  "contact",  DigitalSignature_GetContactInfo},
 };
 
-static constexpr int sig_field_count = sizeof(sig_fields) / sizeof(sig_fields[0]);
+constexpr int SIGNATURE_FIELD_COUNT = sizeof(SIGNATURE_FIELDS) / sizeof(SIGNATURE_FIELDS[0]);
 
-struct SigListEntry {
+struct SignatureListEntry {
     int index = 0;
-    std::optional<std::string> values[sig_field_count];
+    std::optional<std::string> values[SIGNATURE_FIELD_COUNT];
     std::optional<std::string> signing_time;
     std::optional<std::string> error;  // set when this signature could not be read
 };
 
+struct SignatureVerifyEntry {
+    int index = 0;
+    SignatureVerificationStatusType status = SignatureStatus_Undefined;
+    std::string message;
+    bool signature_valid = false;
+    bool document_intact = false;
+    bool certificate_trusted = false;
+    std::string signer;
+};
+
+MessageDigestAlgorithmType parse_digest(const std::string& name) {
+    if (name == "md2") {
+        return MessageDigestAlgorithmType_MD2;
+    }
+
+    if (name == "md4") {
+        return MessageDigestAlgorithmType_MD4;
+    }
+
+    if (name == "md5") {
+        return MessageDigestAlgorithmType_MD5;
+    }
+
+    if (name == "sha1") {
+        return MessageDigestAlgorithmType_SHA1;
+    }
+
+    if (name == "sha224") {
+        return MessageDigestAlgorithmType_SHA224;
+    }
+
+    if (name == "sha256") {
+        return MessageDigestAlgorithmType_SHA256;
+    }
+
+    if (name == "sha384") {
+        return MessageDigestAlgorithmType_SHA384;
+    }
+
+    if (name == "sha512") {
+        return MessageDigestAlgorithmType_SHA512;
+    }
+
+    if (name == "mdc2") {
+        return MessageDigestAlgorithmType_MDC2;
+    }
+
+    if (name == "ripemd160") {
+        return MessageDigestAlgorithmType_RIPEMD160;
+    }
+
+    if (name == "whirlpool") {
+        return MessageDigestAlgorithmType_WHIRLPOOL;
+    }
+
+    throw PdfException(VANILLAPDF_ERROR_PARAMETER_VALUE, "Unknown digest: " + name);
+}
+
+// Set an optional literal-string field on the signature settings when the value
+// is non-empty
+void set_optional_signature_string(DocumentSignatureSettingsHandle* settings, const std::string& value,
+    SignatureSettingsStringSetter setter, const char* context) {
+    if (value.empty()) {
+        return;
+    }
+
+    LiteralStringObjectGuard literal_string;
+    THROW_IF_NOT_SUCCESS(LiteralStringObject_CreateFromDecodedString(value.c_str(), literal_string.out()), context);
+    THROW_IF_NOT_SUCCESS(setter(settings, literal_string), context);
+}
+
+// Copy the contents of a library buffer into a string, or an empty string when
+// the buffer cannot be read
+std::string buffer_to_string(BufferHandle* buffer) {
+    string_type data = nullptr;
+    size_type size = 0;
+    error_type result = Buffer_GetData(buffer, &data, &size);
+    if (result != VANILLAPDF_ERROR_SUCCESS || size == 0) {
+        return std::string();
+    }
+
+    return std::string(data, size);
+}
+
+int process_sign_add(const SignAddOptions& options) {
+    DocumentGuard document;
+    THROW_IF_NOT_SUCCESS(Document_Open(options.input.c_str(), document.out()), "Failed to open document");
+
+    PKCS12KeyGuard pkcs12_key;
+    THROW_IF_NOT_SUCCESS(PKCS12Key_CreateFromFile(options.key_file.c_str(), options.password.c_str(), pkcs12_key.out()),
+        "Failed to load PKCS#12 key");
+
+    SigningKeyGuard signing_key;
+    THROW_IF_NOT_SUCCESS(PKCS12Key_ToSigningKey(pkcs12_key, signing_key.out()), "Failed to create signing key");
+
+    auto digest = parse_digest(options.digest);
+
+    DocumentSignatureSettingsGuard settings;
+    THROW_IF_NOT_SUCCESS(DocumentSignatureSettings_Create(settings.out()), "Failed to create signature settings");
+    THROW_IF_NOT_SUCCESS(DocumentSignatureSettings_SetDigest(settings, digest), "Failed to set digest algorithm");
+    THROW_IF_NOT_SUCCESS(DocumentSignatureSettings_SetSigningKey(settings, signing_key), "Failed to set signing key");
+
+    set_optional_signature_string(settings, options.name,
+        DocumentSignatureSettings_SetName, "Failed to set signer name");
+    set_optional_signature_string(settings, options.reason,
+        DocumentSignatureSettings_SetReason, "Failed to set reason");
+    set_optional_signature_string(settings, options.location,
+        DocumentSignatureSettings_SetLocation, "Failed to set location");
+
+    if (!options.no_signing_time) {
+        DateGuard current_time;
+        THROW_IF_NOT_SUCCESS(Date_CreateCurrent(current_time.out()), "Failed to create signing time");
+        THROW_IF_NOT_SUCCESS(DocumentSignatureSettings_SetSigningTime(settings, current_time),
+            "Failed to set signing time");
+    }
+
+    FileGuard destination_file;
+    THROW_IF_NOT_SUCCESS(File_Create(options.output.c_str(), destination_file.out()), "Failed to create output file");
+
+    THROW_IF_NOT_SUCCESS(Document_Sign(document, destination_file, settings), "Failed to sign document");
+    std::cerr << "Signed: " << options.output << "\n";
+
+    return VANILLAPDF_CLI_ERROR_SUCCESS;
+}
+
 // An absent optional signature entry surfaces as OBJECT_MISSING (or
-// OPTIONAL_ENTRY_MISSING); either is a normal "not present", not an error.
-static bool is_absent(error_type err) {
-    return err == VANILLAPDF_ERROR_OBJECT_MISSING
-        || err == VANILLAPDF_ERROR_OPTIONAL_ENTRY_MISSING;
+// OPTIONAL_ENTRY_MISSING); either is a normal "not present", not an error
+bool is_absent(error_type result) {
+    return (result == VANILLAPDF_ERROR_OBJECT_MISSING) || (result == VANILLAPDF_ERROR_OPTIONAL_ENTRY_MISSING);
 }
 
 // Read one optional string field. A cleanly-absent entry and an unreadable one
 // both yield nullopt so a single bad field never aborts the listing; a genuine
 // read failure is surfaced under --verbose.
-static std::optional<std::string> get_sig_field(
-        DigitalSignatureHandle* sig, const char* label,
-        error_type (*getter)(DigitalSignatureHandle*, StringObjectHandle**)) {
-    StringObjectPtr str;
-    error_type err = getter(sig, str.put());
-    if (err == VANILLAPDF_ERROR_SUCCESS) {
-        return to_string_utf8(str.get());
+std::optional<std::string> get_signature_field(DigitalSignatureHandle* signature, const SignatureField& field) {
+    StringObjectGuard text;
+    error_type result = field.getter(signature, text.out());
+    if (result == VANILLAPDF_ERROR_SUCCESS) {
+        return to_string_utf8(text);
     }
-    if (!is_absent(err) && vanillapdf::cli::g_verbose) {
-        std::cerr << "Warning: could not read signature " << label << ": "
-                  << vanillapdf::cli::last_error_message() << "\n";
+
+    if (!is_absent(result) && g_verbose) {
+        auto detail = last_error_message();
+        std::cerr << "Warning: could not read signature " << field.label << ": " << detail << "\n";
     }
+
     return std::nullopt;
 }
 
 // Format the signature's /M signing time as an ISO 8601 string, or nullopt if
-// absent or unreadable.
-static std::optional<std::string> get_signing_time(DigitalSignatureHandle* sig) {
-    DatePtr date;
-    error_type err = DigitalSignature_GetSigningTime(sig, date.put());
-    if (err != VANILLAPDF_ERROR_SUCCESS) {
-        if (!is_absent(err) && vanillapdf::cli::g_verbose) {
-            std::cerr << "Warning: could not read signing time: "
-                      << vanillapdf::cli::last_error_message() << "\n";
+// absent or unreadable
+std::optional<std::string> get_signing_time(DigitalSignatureHandle* signature) {
+    DateGuard date;
+    error_type result = DigitalSignature_GetSigningTime(signature, date.out());
+    if (result != VANILLAPDF_ERROR_SUCCESS) {
+        if (!is_absent(result) && g_verbose) {
+            auto detail = last_error_message();
+            std::cerr << "Warning: could not read signing time: " << detail << "\n";
         }
+
         return std::nullopt;
     }
 
-    integer_type year = 0, month = 0, day = 0, hour = 0, minute = 0, second = 0;
-    check(Date_GetYear(date.get(), &year), "Failed to get signing-time year");
-    check(Date_GetMonth(date.get(), &month), "Failed to get signing-time month");
-    check(Date_GetDay(date.get(), &day), "Failed to get signing-time day");
-    check(Date_GetHour(date.get(), &hour), "Failed to get signing-time hour");
-    check(Date_GetMinute(date.get(), &minute), "Failed to get signing-time minute");
-    check(Date_GetSecond(date.get(), &second), "Failed to get signing-time second");
+    integer_type year = 0;
+    integer_type month = 0;
+    integer_type day = 0;
+    integer_type hour = 0;
+    integer_type minute = 0;
+    integer_type second = 0;
+    THROW_IF_NOT_SUCCESS(Date_GetYear(date, &year), "Failed to get signing-time year");
+    THROW_IF_NOT_SUCCESS(Date_GetMonth(date, &month), "Failed to get signing-time month");
+    THROW_IF_NOT_SUCCESS(Date_GetDay(date, &day), "Failed to get signing-time day");
+    THROW_IF_NOT_SUCCESS(Date_GetHour(date, &hour), "Failed to get signing-time hour");
+    THROW_IF_NOT_SUCCESS(Date_GetMinute(date, &minute), "Failed to get signing-time minute");
+    THROW_IF_NOT_SUCCESS(Date_GetSecond(date, &second), "Failed to get signing-time second");
 
-    std::string result =
-        fmt::format("{:04}-{:02}-{:02}T{:02}:{:02}:{:02}", year, month, day, hour, minute, second);
+    auto signing_time = fmt::format("{:04}-{:02}-{:02}T{:02}:{:02}:{:02}", year, month, day, hour, minute, second);
 
-    TimezoneType tz = TimezoneType_Undefined;
-    check(Date_GetTimezone(date.get(), &tz), "Failed to get signing-time timezone");
-    if (tz == TimezoneType_UTC) {
-        result += "Z";
-    } else if (tz == TimezoneType_Later || tz == TimezoneType_Earlier) {
-        integer_type hour_offset = 0, minute_offset = 0;
-        check(Date_GetHourOffset(date.get(), &hour_offset), "Failed to get signing-time hour offset");
-        check(Date_GetMinuteOffset(date.get(), &minute_offset), "Failed to get signing-time minute offset");
-        result += fmt::format("{}{:02}:{:02}", tz == TimezoneType_Later ? '+' : '-',
-                              hour_offset, minute_offset);
+    TimezoneType timezone = TimezoneType_Undefined;
+    THROW_IF_NOT_SUCCESS(Date_GetTimezone(date, &timezone), "Failed to get signing-time timezone");
+
+    if (timezone == TimezoneType_UTC) {
+        signing_time += "Z";
+    } else if (timezone == TimezoneType_Later || timezone == TimezoneType_Earlier) {
+        integer_type hour_offset = 0;
+        integer_type minute_offset = 0;
+        THROW_IF_NOT_SUCCESS(Date_GetHourOffset(date, &hour_offset), "Failed to get signing-time hour offset");
+        THROW_IF_NOT_SUCCESS(Date_GetMinuteOffset(date, &minute_offset), "Failed to get signing-time minute offset");
+
+        char offset_sign = (timezone == TimezoneType_Later) ? '+' : '-';
+        signing_time += fmt::format("{}{:02}:{:02}", offset_sign, hour_offset, minute_offset);
     }
-    return result;
+
+    return signing_time;
 }
 
-static void print_list_text(const std::string& file, const std::vector<SigListEntry>& sigs) {
+void print_optional_json(const std::optional<std::string>& value) {
+    if (value.has_value()) {
+        std::cout << json_escape(value.value());
+    } else {
+        std::cout << "null";
+    }
+}
+
+void print_list_text(const std::string& file, const std::vector<SignatureListEntry>& entries) {
     std::cout << "File: " << file << "\n";
-    for (const auto& e : sigs) {
-        std::cout << "Signature #" << e.index << ":\n";
-        if (e.error) {
-            std::cout << "    <error: " << *e.error << ">\n";
+
+    for (const auto& entry : entries) {
+        std::cout << "Signature #" << entry.index << ":\n";
+        if (entry.error.has_value()) {
+            std::cout << "    <error: " << entry.error.value() << ">\n";
             continue;
         }
-        for (int k = 0; k < sig_field_count; ++k) {
-            if (e.values[k]) {
-                std::cout << "    " << sig_fields[k].label << ": " << *e.values[k] << "\n";
+
+        for (int i = 0; i < SIGNATURE_FIELD_COUNT; i++) {
+            if (entry.values[i].has_value()) {
+                std::cout << "    " << SIGNATURE_FIELDS[i].label << ": " << entry.values[i].value() << "\n";
             }
         }
-        if (e.signing_time) {
-            std::cout << "    Signing Time: " << *e.signing_time << "\n";
+
+        if (entry.signing_time.has_value()) {
+            std::cout << "    Signing Time: " << entry.signing_time.value() << "\n";
         }
     }
-    std::cout << "Signatures: " << sigs.size() << "\n";
+
+    std::cout << "Signatures: " << entries.size() << "\n";
 }
 
-static void print_list_json(const std::string& file, const std::vector<SigListEntry>& sigs) {
+void print_list_json(const std::string& file, const std::vector<SignatureListEntry>& entries) {
     std::cout << "{\n";
     std::cout << "  \"file\": " << json_escape(file) << ",\n";
     std::cout << "  \"signatures\": [";
-    for (size_t j = 0; j < sigs.size(); ++j) {
-        const auto& e = sigs[j];
-        if (j > 0) std::cout << ",";
+
+    for (size_t i = 0; i < entries.size(); i++) {
+        const auto& entry = entries[i];
+        if (i > 0) {
+            std::cout << ",";
+        }
+
         std::cout << "\n    {\n";
-        std::cout << "      \"index\": " << e.index;
-        for (int k = 0; k < sig_field_count; ++k) {
-            std::cout << ",\n      " << json_escape(sig_fields[k].key) << ": ";
-            if (e.values[k]) {
-                std::cout << json_escape(*e.values[k]);
-            } else {
-                std::cout << "null";
-            }
+        std::cout << "      \"index\": " << entry.index;
+
+        for (int field_index = 0; field_index < SIGNATURE_FIELD_COUNT; field_index++) {
+            std::cout << ",\n      " << json_escape(SIGNATURE_FIELDS[field_index].key) << ": ";
+            print_optional_json(entry.values[field_index]);
         }
+
         std::cout << ",\n      \"signing_time\": ";
-        if (e.signing_time) {
-            std::cout << json_escape(*e.signing_time);
-        } else {
-            std::cout << "null";
-        }
+        print_optional_json(entry.signing_time);
+
         std::cout << ",\n      \"error\": ";
-        if (e.error) {
-            std::cout << json_escape(*e.error);
-        } else {
-            std::cout << "null";
-        }
+        print_optional_json(entry.error);
+
         std::cout << "\n    }";
     }
+
     std::cout << "\n  ]\n}\n";
 }
 
-static int run_sign_list(const SignListOptions& opts) {
-    DocumentPtr document;
-    check(Document_Open(opts.input.c_str(), document.put()), "Failed to open document");
+// Read the fields of one signature field into entry. Returns false for an
+// unsigned signature field (no value), which is not listed. A malformed
+// signature is recorded in entry.error rather than aborting the whole listing.
+bool read_signature_entry(FieldHandle* field, SignatureListEntry& entry) {
+    try {
+        SignatureFieldGuard signature_field;
+        THROW_IF_NOT_SUCCESS(Field_ToSignature(field, signature_field.out()), "Failed to convert to signature field");
 
-    CatalogPtr catalog;
-    check(Document_GetCatalog(document.get(), catalog.put()), "Failed to get catalog");
+        DigitalSignatureGuard signature;
+        error_type signature_result = SignatureField_GetValue(signature_field, signature.out());
+        if (signature_result == VANILLAPDF_ERROR_OPTIONAL_ENTRY_MISSING) {
+            return false;
+        }
 
-    std::vector<SigListEntry> sigs;
+        THROW_IF_NOT_SUCCESS(signature_result, "Failed to get signature value");
 
-    InteractiveFormPtr acro_form;
-    error_type form_err = Catalog_GetAcroForm(catalog.get(), acro_form.put());
-    if (form_err != VANILLAPDF_ERROR_OPTIONAL_ENTRY_MISSING) {
-        check(form_err, "Failed to get interactive form");
+        for (int i = 0; i < SIGNATURE_FIELD_COUNT; i++) {
+            entry.values[i] = get_signature_field(signature, SIGNATURE_FIELDS[i]);
+        }
 
-        FieldCollectionPtr fields;
-        check(InteractiveForm_GetFields(acro_form.get(), fields.put()), "Failed to get fields");
+        entry.signing_time = get_signing_time(signature);
+    } catch (const PdfException& ex) {
+        entry.error = ex.what();
+    }
+
+    return true;
+}
+
+int process_sign_list(const SignListOptions& options) {
+    DocumentGuard document;
+    THROW_IF_NOT_SUCCESS(Document_Open(options.input.c_str(), document.out()), "Failed to open document");
+
+    CatalogGuard catalog;
+    THROW_IF_NOT_SUCCESS(Document_GetCatalog(document, catalog.out()), "Failed to get catalog");
+
+    std::vector<SignatureListEntry> entries;
+
+    InteractiveFormGuard interactive_form;
+    error_type form_result = Catalog_GetAcroForm(catalog, interactive_form.out());
+    if (form_result != VANILLAPDF_ERROR_OPTIONAL_ENTRY_MISSING) {
+        THROW_IF_NOT_SUCCESS(form_result, "Failed to get interactive form");
+
+        FieldCollectionGuard fields;
+        THROW_IF_NOT_SUCCESS(InteractiveForm_GetFields(interactive_form, fields.out()), "Failed to get fields");
 
         size_type field_count = 0;
-        check(FieldCollection_GetSize(fields.get(), &field_count), "Failed to get field count");
+        THROW_IF_NOT_SUCCESS(FieldCollection_GetSize(fields, &field_count), "Failed to get field count");
 
-        int sig_index = 0;
-        for (size_type i = 0; i < field_count; ++i) {
-            FieldPtr field;
-            check(FieldCollection_At(fields.get(), i, field.put()), "Failed to get field");
+        int signature_index = 0;
+        for (size_type i = 0; i < field_count; i++) {
+            FieldGuard field;
+            THROW_IF_NOT_SUCCESS(FieldCollection_At(fields, i, field.out()), "Failed to get field");
 
-            FieldType type = FieldType_Undefined;
-            check(Field_GetType(field.get(), &type), "Failed to get field type");
+            FieldType field_type = FieldType_Undefined;
+            THROW_IF_NOT_SUCCESS(Field_GetType(field, &field_type), "Failed to get field type");
 
-            if (type != FieldType_Signature) continue;
-
-            SigListEntry entry;
-            bool is_signed = true;
-
-            // A malformed signature is reported as an error entry rather than
-            // aborting the whole listing.
-            try {
-                SignatureFieldPtr sig_field;
-                check(Field_ToSignature(field.get(), sig_field.put()),
-                      "Failed to convert to signature field");
-
-                DigitalSignaturePtr sig;
-                error_type sig_err = SignatureField_GetValue(sig_field.get(), sig.put());
-                if (sig_err == VANILLAPDF_ERROR_OPTIONAL_ENTRY_MISSING) {
-                    // Unsigned signature field (no value) — not counted.
-                    is_signed = false;
-                } else {
-                    check(sig_err, "Failed to get signature value");
-                    for (int k = 0; k < sig_field_count; ++k) {
-                        entry.values[k] = get_sig_field(sig.get(), sig_fields[k].label, sig_fields[k].getter);
-                    }
-                    entry.signing_time = get_signing_time(sig.get());
-                }
-            } catch (const pdf_error& e) {
-                entry.error = e.what();
+            if (field_type != FieldType_Signature) {
+                continue;
             }
 
-            if (!is_signed) continue;
+            SignatureListEntry entry;
+            bool is_signed = read_signature_entry(field, entry);
+            if (!is_signed) {
+                continue;
+            }
 
-            entry.index = ++sig_index;
-            sigs.push_back(entry);
+            entry.index = ++signature_index;
+            entries.push_back(entry);
         }
     }
 
-    if (opts.json_output) {
-        print_list_json(opts.input, sigs);
+    if (options.json_output) {
+        print_list_json(options.input, entries);
     } else {
-        print_list_text(opts.input, sigs);
+        print_list_text(options.input, entries);
     }
 
-    return 0;
+    return VANILLAPDF_CLI_ERROR_SUCCESS;
 }
 
-struct SigVerifyResult {
-    int index = 0;
-    SignatureVerificationStatusType status = SignatureStatus_Undefined;
-    std::string message;
-    bool sig_valid    = false;
-    bool doc_intact   = false;
-    bool cert_trusted = false;
-    std::string signer;
-};
-
-static const char* verification_status_string(SignatureVerificationStatusType status) {
+const char* verification_status_name(SignatureVerificationStatusType status) {
     switch (status) {
-    case SignatureStatus_Valid:                   return "Valid";
-    case SignatureStatus_Invalid:                return "Invalid";
-    case SignatureStatus_CertificateExpired:     return "CertificateExpired";
-    case SignatureStatus_CertificateNotYetValid: return "CertificateNotYetValid";
-    case SignatureStatus_CertificateRevoked:     return "CertificateRevoked";
-    case SignatureStatus_CertificateUntrusted:   return "CertificateUntrusted";
-    case SignatureStatus_DocumentModified:       return "DocumentModified";
-    case SignatureStatus_WeakAlgorithm:          return "WeakAlgorithm";
-    case SignatureStatus_MissingCertificate:     return "MissingCertificate";
-    case SignatureStatus_Unknown:                return "Unknown";
-    default:                                     return "Undefined";
+        case SignatureStatus_Valid:                  return "Valid";
+        case SignatureStatus_Invalid:                return "Invalid";
+        case SignatureStatus_CertificateExpired:     return "CertificateExpired";
+        case SignatureStatus_CertificateNotYetValid: return "CertificateNotYetValid";
+        case SignatureStatus_CertificateRevoked:     return "CertificateRevoked";
+        case SignatureStatus_CertificateUntrusted:   return "CertificateUntrusted";
+        case SignatureStatus_DocumentModified:       return "DocumentModified";
+        case SignatureStatus_WeakAlgorithm:          return "WeakAlgorithm";
+        case SignatureStatus_MissingCertificate:     return "MissingCertificate";
+        case SignatureStatus_Unknown:                return "Unknown";
+        default:                                     return "Undefined";
     }
 }
 
-static std::vector<SigVerifyResult> collect_verify_results(
-    const std::string& input_path,
-    TrustedCertificateStoreHandle* store,
-    SignatureVerificationSettingsHandle* settings)
-{
-    DocumentPtr document;
-    check(Document_Open(input_path.c_str(), document.put()), "Failed to open document");
+// Read the bytes covered by the signature's /ByteRange from the PDF file
+std::vector<char> read_signed_bytes(const std::string& input_path, DigitalSignatureHandle* signature) {
+    ByteRangeCollectionGuard byte_ranges;
+    THROW_IF_NOT_SUCCESS(DigitalSignature_GetByteRange(signature, byte_ranges.out()), "Failed to get byte range");
 
-    CatalogPtr catalog;
-    check(Document_GetCatalog(document.get(), catalog.put()), "Failed to get catalog");
+    size_type range_count = 0;
+    THROW_IF_NOT_SUCCESS(ByteRangeCollection_GetSize(byte_ranges, &range_count), "Failed to get range count");
 
-    InteractiveFormPtr acro_form;
-    error_type form_err = Catalog_GetAcroForm(catalog.get(), acro_form.put());
-    if (form_err == VANILLAPDF_ERROR_OPTIONAL_ENTRY_MISSING) {
-        return {};
+    std::ifstream pdf_file(input_path, std::ios::binary);
+    if (!pdf_file) {
+        throw PdfException(VANILLAPDF_ERROR_GENERAL, "Failed to open file for byte range extraction");
     }
-    check(form_err, "Failed to get interactive form");
 
-    FieldCollectionPtr fields;
-    check(InteractiveForm_GetFields(acro_form.get(), fields.put()), "Failed to get fields");
+    std::vector<char> signed_bytes;
+
+    for (size_type i = 0; i < range_count; i++) {
+        ByteRangeGuard byte_range;
+        THROW_IF_NOT_SUCCESS(ByteRangeCollection_GetValue(byte_ranges, i, byte_range.out()),
+            "Failed to get byte range entry");
+
+        IntegerObjectGuard offset_object;
+        IntegerObjectGuard length_object;
+        THROW_IF_NOT_SUCCESS(ByteRange_GetOffset(byte_range, offset_object.out()), "Failed to get range offset");
+        THROW_IF_NOT_SUCCESS(ByteRange_GetLength(byte_range, length_object.out()), "Failed to get range length");
+
+        bigint_type offset = 0;
+        bigint_type length = 0;
+        THROW_IF_NOT_SUCCESS(IntegerObject_GetIntegerValue(offset_object, &offset), "Failed to get offset value");
+        THROW_IF_NOT_SUCCESS(IntegerObject_GetIntegerValue(length_object, &length), "Failed to get length value");
+
+        auto offset_converted = static_cast<std::streamoff>(offset);
+        auto length_converted = static_cast<size_t>(length);
+
+        std::vector<char> chunk(length_converted);
+        pdf_file.seekg(offset_converted);
+        pdf_file.read(chunk.data(), static_cast<std::streamsize>(length_converted));
+        signed_bytes.insert(signed_bytes.end(), chunk.begin(), chunk.end());
+    }
+
+    return signed_bytes;
+}
+
+bool read_verification_flag(SignatureVerificationResultHandle* verification_result,
+    error_type (*getter)(SignatureVerificationResultHandle*, boolean_type*), const char* context) {
+    boolean_type flag_value = VANILLAPDF_RV_FALSE;
+    THROW_IF_NOT_SUCCESS(getter(verification_result, &flag_value), context);
+    return (flag_value != VANILLAPDF_RV_FALSE);
+}
+
+SignatureVerifyEntry verify_signature(const std::string& input_path, DigitalSignatureHandle* signature,
+    TrustedCertificateStoreHandle* certificate_store, SignatureVerificationSettingsHandle* settings) {
+    auto signed_bytes = read_signed_bytes(input_path, signature);
+
+    BufferGuard signed_data_buffer;
+    THROW_IF_NOT_SUCCESS(Buffer_CreateFromData(signed_bytes.data(), signed_bytes.size(), signed_data_buffer.out()),
+        "Failed to create signed data buffer");
+
+    HexadecimalStringObjectGuard signature_contents;
+    THROW_IF_NOT_SUCCESS(DigitalSignature_GetContents(signature, signature_contents.out()),
+        "Failed to get signature contents");
+
+    BufferGuard signature_buffer;
+    THROW_IF_NOT_SUCCESS(HexadecimalStringObject_GetValue(signature_contents, signature_buffer.out()),
+        "Failed to get signature bytes");
+
+    SignatureVerificationResultGuard verification_result;
+    THROW_IF_NOT_SUCCESS(SignatureVerifier_Verify(signed_data_buffer, signature_buffer, certificate_store, settings,
+        verification_result.out()), "Failed to verify signature");
+
+    SignatureVerifyEntry entry;
+    THROW_IF_NOT_SUCCESS(SignatureVerificationResult_GetStatus(verification_result, &entry.status),
+        "Failed to get verification status");
+
+    BufferGuard message_buffer;
+    error_type message_result = SignatureVerificationResult_GetMessage(verification_result, message_buffer.out());
+    if (message_result == VANILLAPDF_ERROR_SUCCESS) {
+        entry.message = buffer_to_string(message_buffer);
+    }
+
+    entry.signature_valid = read_verification_flag(verification_result,
+        SignatureVerificationResult_IsSignatureValid, "Failed to check signature validity");
+    entry.document_intact = read_verification_flag(verification_result,
+        SignatureVerificationResult_IsDocumentIntact, "Failed to check document integrity");
+    entry.certificate_trusted = read_verification_flag(verification_result,
+        SignatureVerificationResult_IsCertificateTrusted, "Failed to check certificate trust");
+
+    BufferGuard signer_buffer;
+    error_type signer_result = SignatureVerificationResult_GetSignerCommonName(verification_result,
+        signer_buffer.out());
+    if (signer_result == VANILLAPDF_ERROR_SUCCESS) {
+        entry.signer = buffer_to_string(signer_buffer);
+    }
+
+    return entry;
+}
+
+std::vector<SignatureVerifyEntry> collect_verify_entries(const std::string& input_path,
+    TrustedCertificateStoreHandle* certificate_store, SignatureVerificationSettingsHandle* settings) {
+    std::vector<SignatureVerifyEntry> entries;
+
+    DocumentGuard document;
+    THROW_IF_NOT_SUCCESS(Document_Open(input_path.c_str(), document.out()), "Failed to open document");
+
+    CatalogGuard catalog;
+    THROW_IF_NOT_SUCCESS(Document_GetCatalog(document, catalog.out()), "Failed to get catalog");
+
+    InteractiveFormGuard interactive_form;
+    error_type form_result = Catalog_GetAcroForm(catalog, interactive_form.out());
+    if (form_result == VANILLAPDF_ERROR_OPTIONAL_ENTRY_MISSING) {
+        return entries;
+    }
+
+    THROW_IF_NOT_SUCCESS(form_result, "Failed to get interactive form");
+
+    FieldCollectionGuard fields;
+    THROW_IF_NOT_SUCCESS(InteractiveForm_GetFields(interactive_form, fields.out()), "Failed to get fields");
 
     size_type field_count = 0;
-    check(FieldCollection_GetSize(fields.get(), &field_count), "Failed to get field count");
+    THROW_IF_NOT_SUCCESS(FieldCollection_GetSize(fields, &field_count), "Failed to get field count");
 
-    std::vector<SigVerifyResult> results;
-    int sig_index = 0;
+    int signature_index = 0;
 
-    for (size_type i = 0; i < field_count; ++i) {
-        FieldPtr field;
-        check(FieldCollection_At(fields.get(), i, field.put()), "Failed to get field");
+    for (size_type i = 0; i < field_count; i++) {
+        FieldGuard field;
+        THROW_IF_NOT_SUCCESS(FieldCollection_At(fields, i, field.out()), "Failed to get field");
 
-        FieldType type = FieldType_Undefined;
-        check(Field_GetType(field.get(), &type), "Failed to get field type");
+        FieldType field_type = FieldType_Undefined;
+        THROW_IF_NOT_SUCCESS(Field_GetType(field, &field_type), "Failed to get field type");
 
-        if (type != FieldType_Signature) continue;
-
-        SignatureFieldPtr sig_field;
-        check(Field_ToSignature(field.get(), sig_field.put()), "Failed to convert to signature field");
-
-        DigitalSignaturePtr sig;
-        error_type sig_err = SignatureField_GetValue(sig_field.get(), sig.put());
-        if (sig_err == VANILLAPDF_ERROR_OPTIONAL_ENTRY_MISSING) continue;
-        check(sig_err, "Failed to get signature value");
-
-        // Extract signed byte ranges from file
-        ByteRangeCollectionPtr ranges;
-        check(DigitalSignature_GetByteRange(sig.get(), ranges.put()), "Failed to get byte range");
-
-        size_type range_count = 0;
-        check(ByteRangeCollection_GetSize(ranges.get(), &range_count), "Failed to get range count");
-
-        std::vector<char> signed_bytes;
-        std::ifstream pdf_file(input_path, std::ios::binary);
-        check(pdf_file ? VANILLAPDF_ERROR_SUCCESS : VANILLAPDF_ERROR_GENERAL,
-              "Failed to open file for byte range extraction");
-
-        for (size_type r = 0; r < range_count; ++r) {
-            ByteRangePtr range;
-            check(ByteRangeCollection_GetValue(ranges.get(), r, range.put()), "Failed to get byte range entry");
-
-            IntegerObjectPtr offset_obj, length_obj;
-            check(ByteRange_GetOffset(range.get(), offset_obj.put()), "Failed to get range offset");
-            check(ByteRange_GetLength(range.get(), length_obj.put()), "Failed to get range length");
-
-            bigint_type offset = 0, length = 0;
-            check(IntegerObject_GetIntegerValue(offset_obj.get(), &offset), "Failed to get offset value");
-            check(IntegerObject_GetIntegerValue(length_obj.get(), &length), "Failed to get length value");
-
-            std::vector<char> chunk(static_cast<size_t>(length));
-            pdf_file.seekg(static_cast<std::streamoff>(offset));
-            pdf_file.read(chunk.data(), static_cast<std::streamsize>(length));
-            signed_bytes.insert(signed_bytes.end(), chunk.begin(), chunk.end());
+        if (field_type != FieldType_Signature) {
+            continue;
         }
 
-        BufferPtr signed_data_buf;
-        check(Buffer_CreateFromData(signed_bytes.data(), signed_bytes.size(), signed_data_buf.put()),
-              "Failed to create signed data buffer");
+        SignatureFieldGuard signature_field;
+        THROW_IF_NOT_SUCCESS(Field_ToSignature(field, signature_field.out()), "Failed to convert to signature field");
 
-        HexadecimalStringObjectPtr contents;
-        check(DigitalSignature_GetContents(sig.get(), contents.put()), "Failed to get signature contents");
-
-        BufferPtr sig_buf;
-        check(HexadecimalStringObject_GetValue(contents.get(), sig_buf.put()), "Failed to get signature bytes");
-
-        SignatureVerificationResultPtr vresult;
-        check(SignatureVerifier_Verify(signed_data_buf.get(), sig_buf.get(), store, settings, vresult.put()),
-              "Failed to verify signature");
-
-        SigVerifyResult result;
-        result.index = ++sig_index;
-
-        check(SignatureVerificationResult_GetStatus(vresult.get(), &result.status),
-              "Failed to get verification status");
-
-        BufferPtr msg_buf;
-        if (SignatureVerificationResult_GetMessage(vresult.get(), msg_buf.put()) == VANILLAPDF_ERROR_SUCCESS) {
-            string_type msg_data = nullptr;
-            size_type msg_size = 0;
-            if (Buffer_GetData(msg_buf.get(), &msg_data, &msg_size) == VANILLAPDF_ERROR_SUCCESS && msg_size > 0) {
-                result.message = std::string(msg_data, msg_size);
-            }
+        DigitalSignatureGuard signature;
+        error_type signature_result = SignatureField_GetValue(signature_field, signature.out());
+        if (signature_result == VANILLAPDF_ERROR_OPTIONAL_ENTRY_MISSING) {
+            continue;
         }
 
-        boolean_type bval = VANILLAPDF_RV_FALSE;
-        check(SignatureVerificationResult_IsSignatureValid(vresult.get(), &bval), "Failed to check signature validity");
-        result.sig_valid = (bval != VANILLAPDF_RV_FALSE);
+        THROW_IF_NOT_SUCCESS(signature_result, "Failed to get signature value");
 
-        bval = VANILLAPDF_RV_FALSE;
-        check(SignatureVerificationResult_IsDocumentIntact(vresult.get(), &bval), "Failed to check document integrity");
-        result.doc_intact = (bval != VANILLAPDF_RV_FALSE);
-
-        bval = VANILLAPDF_RV_FALSE;
-        check(SignatureVerificationResult_IsCertificateTrusted(vresult.get(), &bval), "Failed to check certificate trust");
-        result.cert_trusted = (bval != VANILLAPDF_RV_FALSE);
-
-        BufferPtr name_buf;
-        if (SignatureVerificationResult_GetSignerCommonName(vresult.get(), name_buf.put()) == VANILLAPDF_ERROR_SUCCESS) {
-            string_type name_data = nullptr;
-            size_type name_size = 0;
-            if (Buffer_GetData(name_buf.get(), &name_data, &name_size) == VANILLAPDF_ERROR_SUCCESS && name_size > 0) {
-                result.signer = std::string(name_data, name_size);
-            }
-        }
-
-        results.push_back(std::move(result));
+        auto entry = verify_signature(input_path, signature, certificate_store, settings);
+        entry.index = ++signature_index;
+        entries.push_back(entry);
     }
 
-    return results;
+    return entries;
 }
 
-static void print_verify_text(const std::string& file, const std::vector<SigVerifyResult>& results) {
+void print_verify_text(const std::string& file, const std::vector<SignatureVerifyEntry>& entries) {
     std::cout << "File: " << file << "\n";
-    if (results.empty()) {
+    if (entries.empty()) {
         std::cout << "No signatures found\n";
         return;
     }
-    for (const auto& r : results) {
-        std::cout << "Signature #" << r.index << ":\n";
-        std::cout << "  Status: " << verification_status_string(r.status) << "\n";
-        if (!r.message.empty()) {
-            std::cout << "  Message: " << r.message << "\n";
+
+    for (const auto& entry : entries) {
+        std::cout << "Signature #" << entry.index << ":\n";
+        std::cout << "  Status: " << verification_status_name(entry.status) << "\n";
+        if (!entry.message.empty()) {
+            std::cout << "  Message: " << entry.message << "\n";
         }
-        std::cout << "  Signature valid: " << (r.sig_valid ? "yes" : "no") << "\n";
-        std::cout << "  Document intact: " << (r.doc_intact ? "yes" : "no") << "\n";
-        std::cout << "  Certificate trusted: " << (r.cert_trusted ? "yes" : "no") << "\n";
-        if (!r.signer.empty()) {
-            std::cout << "  Signer: " << r.signer << "\n";
+
+        std::cout << "  Signature valid: " << (entry.signature_valid ? "yes" : "no") << "\n";
+        std::cout << "  Document intact: " << (entry.document_intact ? "yes" : "no") << "\n";
+        std::cout << "  Certificate trusted: " << (entry.certificate_trusted ? "yes" : "no") << "\n";
+        if (!entry.signer.empty()) {
+            std::cout << "  Signer: " << entry.signer << "\n";
         }
     }
 }
 
-static void print_verify_json(const std::string& file, const std::vector<SigVerifyResult>& results) {
+void print_verify_json(const std::string& file, const std::vector<SignatureVerifyEntry>& entries) {
     std::cout << "{\n";
     std::cout << "  \"file\": " << json_escape(file) << ",\n";
     std::cout << "  \"signatures\": [";
-    for (size_t j = 0; j < results.size(); ++j) {
-        const auto& r = results[j];
-        if (j > 0) std::cout << ",";
+
+    for (size_t i = 0; i < entries.size(); i++) {
+        const auto& entry = entries[i];
+        if (i > 0) {
+            std::cout << ",";
+        }
+
+        auto status = verification_status_name(entry.status);
+
         std::cout << "\n    {\n";
-        std::cout << "      \"index\": " << r.index << ",\n";
-        std::cout << "      \"status\": " << json_escape(verification_status_string(r.status)) << ",\n";
-        if (!r.message.empty()) {
-            std::cout << "      \"message\": " << json_escape(r.message) << ",\n";
+        std::cout << "      \"index\": " << entry.index << ",\n";
+        std::cout << "      \"status\": " << json_escape(status) << ",\n";
+        if (!entry.message.empty()) {
+            std::cout << "      \"message\": " << json_escape(entry.message) << ",\n";
         }
-        std::cout << "      \"signature_valid\": " << (r.sig_valid ? "true" : "false") << ",\n";
-        std::cout << "      \"document_intact\": " << (r.doc_intact ? "true" : "false") << ",\n";
-        std::cout << "      \"certificate_trusted\": " << (r.cert_trusted ? "true" : "false");
-        if (!r.signer.empty()) {
-            std::cout << ",\n      \"signer\": " << json_escape(r.signer);
+
+        std::cout << "      \"signature_valid\": " << (entry.signature_valid ? "true" : "false") << ",\n";
+        std::cout << "      \"document_intact\": " << (entry.document_intact ? "true" : "false") << ",\n";
+        std::cout << "      \"certificate_trusted\": " << (entry.certificate_trusted ? "true" : "false");
+        if (!entry.signer.empty()) {
+            std::cout << ",\n      \"signer\": " << json_escape(entry.signer);
         }
+
         std::cout << "\n    }";
     }
+
     std::cout << "\n  ]\n}\n";
 }
 
-static int run_sign_verify(const SignVerifyOptions& opts) {
-    TrustedCertificateStorePtr store;
-    check(TrustedCertificateStore_Create(store.put()), "Failed to create certificate store");
-    if (opts.load_system_certs) {
-        check(TrustedCertificateStore_LoadSystemDefaults(store.get()), "Failed to load system certificates");
-    }
-    for (const auto& cert_path : opts.trusted_certs) {
-        std::ifstream cert_file(cert_path, std::ios::binary);
-        check(cert_file ? VANILLAPDF_ERROR_SUCCESS : VANILLAPDF_ERROR_GENERAL,
-              "Failed to open certificate file: " + cert_path);
-        std::string pem_data((std::istreambuf_iterator<char>(cert_file)), std::istreambuf_iterator<char>());
-        BufferPtr cert_buf;
-        check(Buffer_CreateFromData(pem_data.data(), pem_data.size(), cert_buf.put()),
-              "Failed to create certificate buffer");
-        check(TrustedCertificateStore_AddCertificateFromPEM(store.get(), cert_buf.get()),
-              "Failed to add certificate from: " + cert_path);
+void add_trusted_certificate(TrustedCertificateStoreHandle* certificate_store, const std::string& certificate_path) {
+    std::ifstream certificate_file(certificate_path, std::ios::binary);
+    if (!certificate_file) {
+        throw PdfException(VANILLAPDF_ERROR_GENERAL, "Failed to open certificate file: " + certificate_path);
     }
 
-    SignatureVerificationSettingsPtr settings;
-    check(SignatureVerificationSettings_Create(settings.put()), "Failed to create verification settings");
-    if (opts.skip_cert_validation) {
-        check(SignatureVerificationSettings_SetSkipCertificateValidation(settings.get(), VANILLAPDF_RV_TRUE),
-              "Failed to set skip certificate validation");
-    }
-    if (opts.check_signing_time) {
-        check(SignatureVerificationSettings_SetCheckSigningTimeFlag(settings.get(), VANILLAPDF_RV_TRUE),
-              "Failed to set check signing time");
-    }
-    if (opts.allow_weak) {
-        check(SignatureVerificationSettings_SetAllowWeakAlgorithmsFlag(settings.get(), VANILLAPDF_RV_TRUE),
-              "Failed to set allow weak algorithms");
-    }
+    std::istreambuf_iterator<char> file_begin(certificate_file);
+    std::istreambuf_iterator<char> file_end;
+    std::string pem_data(file_begin, file_end);
 
-    auto results = collect_verify_results(opts.input, store.get(), settings.get());
-
-    if (opts.json_output) {
-        print_verify_json(opts.input, results);
-    } else {
-        print_verify_text(opts.input, results);
-    }
-
-    return 0;
+    BufferGuard certificate_buffer;
+    THROW_IF_NOT_SUCCESS(Buffer_CreateFromData(pem_data.data(), pem_data.size(), certificate_buffer.out()),
+        "Failed to create certificate buffer");
+    THROW_IF_NOT_SUCCESS(TrustedCertificateStore_AddCertificateFromPEM(certificate_store, certificate_buffer),
+        "Failed to add certificate from: " + certificate_path);
 }
 
-void register_sign(CLI::App& app) {
-    auto* cmd = app.add_subcommand("sign", "Manage PDF digital signatures");
-    cmd->require_subcommand(1);
+int process_sign_verify(const SignVerifyOptions& options) {
+    TrustedCertificateStoreGuard certificate_store;
+    THROW_IF_NOT_SUCCESS(TrustedCertificateStore_Create(certificate_store.out()), "Failed to create certificate store");
+
+    if (options.load_system_certificates) {
+        THROW_IF_NOT_SUCCESS(TrustedCertificateStore_LoadSystemDefaults(certificate_store),
+            "Failed to load system certificates");
+    }
+
+    for (const auto& certificate_path : options.trusted_certificates) {
+        add_trusted_certificate(certificate_store, certificate_path);
+    }
+
+    SignatureVerificationSettingsGuard settings;
+    THROW_IF_NOT_SUCCESS(SignatureVerificationSettings_Create(settings.out()),
+        "Failed to create verification settings");
+
+    if (options.skip_certificate_validation) {
+        THROW_IF_NOT_SUCCESS(SignatureVerificationSettings_SetSkipCertificateValidation(settings, VANILLAPDF_RV_TRUE),
+            "Failed to set skip certificate validation");
+    }
+
+    if (options.check_signing_time) {
+        THROW_IF_NOT_SUCCESS(SignatureVerificationSettings_SetCheckSigningTimeFlag(settings, VANILLAPDF_RV_TRUE),
+            "Failed to set check signing time");
+    }
+
+    if (options.allow_weak_algorithms) {
+        THROW_IF_NOT_SUCCESS(SignatureVerificationSettings_SetAllowWeakAlgorithmsFlag(settings, VANILLAPDF_RV_TRUE),
+            "Failed to set allow weak algorithms");
+    }
+
+    auto entries = collect_verify_entries(options.input, certificate_store, settings);
+
+    if (options.json_output) {
+        print_verify_json(options.input, entries);
+    } else {
+        print_verify_text(options.input, entries);
+    }
+
+    return VANILLAPDF_CLI_ERROR_SUCCESS;
+}
+
+} // namespace
+
+void register_sign(CLI::App& app, int& exit_code) {
+    auto* command = app.add_subcommand("sign", "Manage PDF digital signatures");
+    command->require_subcommand(1);
 
     // sign add
-    auto add_opts = std::make_shared<SignAddOptions>();
-    auto* add_cmd = cmd->add_subcommand("add", "Add a digital signature to a PDF document");
-    add_cmd->add_option("input", add_opts->input, "Input PDF file")
-        ->required()
-        ->check(CLI::ExistingFile);
-    add_cmd->add_option("-o,--output", add_opts->output, "Output PDF file")
-        ->required();
-    add_cmd->add_option("-k,--key", add_opts->key_file, "PKCS#12 key file (.p12/.pfx)")
-        ->required()
-        ->check(CLI::ExistingFile);
-    add_cmd->add_option("-p,--password", add_opts->password, "Key file password");
-    add_cmd->add_option("--digest", add_opts->digest,
-                        "Message digest algorithm for signing (default: sha256)")
-        ->check(CLI::IsMember({"md2", "md4", "md5", "sha1", "sha224", "sha256",
-                                "sha384", "sha512", "mdc2", "ripemd160", "whirlpool"}));
-    add_cmd->add_option("--name", add_opts->name, "Signer name recorded in the signature");
-    add_cmd->add_option("--reason", add_opts->reason, "Reason for signing");
-    add_cmd->add_option("--location", add_opts->location, "Location of signing");
-    add_cmd->add_flag("--no-signing-time", add_opts->no_signing_time,
-                      "Do not record a signing time (recorded as the current time by default)");
+    auto add_options = std::make_shared<SignAddOptions>();
+    auto* add_command = command->add_subcommand("add", "Add a digital signature to a PDF document");
 
-    add_cmd->callback([add_opts]() {
-        try {
-            std::exit(run_sign_add(*add_opts));
-        } catch (const pdf_error& e) {
-            report_error(e);
-            std::exit(1);
-        }
+    add_command->add_option("input", add_options->input, "Input PDF file")
+        ->required()
+        ->check(CLI::ExistingFile);
+    add_command->add_option("-o,--output", add_options->output, "Output PDF file")
+        ->required();
+    add_command->add_option("-k,--key", add_options->key_file, "PKCS#12 key file (.p12/.pfx)")
+        ->required()
+        ->check(CLI::ExistingFile);
+    add_command->add_option("-p,--password", add_options->password, "Key file password");
+    add_command->add_option("--digest", add_options->digest, "Message digest algorithm for signing (default: sha256)")
+        ->check(CLI::IsMember({"md2", "md4", "md5", "sha1", "sha224", "sha256",
+            "sha384", "sha512", "mdc2", "ripemd160", "whirlpool"}));
+    add_command->add_option("--name", add_options->name, "Signer name recorded in the signature");
+    add_command->add_option("--reason", add_options->reason, "Reason for signing");
+    add_command->add_option("--location", add_options->location, "Location of signing");
+    add_command->add_flag("--no-signing-time", add_options->no_signing_time,
+        "Do not record a signing time (recorded as the current time by default)");
+
+    add_command->callback([add_options, &exit_code]() {
+        exit_code = process_sign_add(*add_options);
     });
 
     // sign list
-    auto list_opts = std::make_shared<SignListOptions>();
-    auto* list_cmd = cmd->add_subcommand("list", "List digital signatures in a PDF document");
-    list_cmd->add_option("input", list_opts->input, "Input PDF file")
+    auto list_options = std::make_shared<SignListOptions>();
+    auto* list_command = command->add_subcommand("list", "List digital signatures in a PDF document");
+
+    list_command->add_option("input", list_options->input, "Input PDF file")
         ->required()
         ->check(CLI::ExistingFile);
-    list_cmd->add_flag("--json", list_opts->json_output, "Output results as JSON");
+    list_command->add_flag("--json", list_options->json_output, "Output results as JSON");
 
-    list_cmd->callback([list_opts]() {
-        try {
-            std::exit(run_sign_list(*list_opts));
-        } catch (const pdf_error& e) {
-            report_error(e);
-            std::exit(1);
-        }
+    list_command->callback([list_options, &exit_code]() {
+        exit_code = process_sign_list(*list_options);
     });
 
     // sign verify
-    auto verify_opts = std::make_shared<SignVerifyOptions>();
-    auto* verify_cmd = cmd->add_subcommand("verify", "Verify digital signatures in a PDF document");
-    verify_cmd->add_option("input", verify_opts->input, "Input PDF file")
+    auto verify_options = std::make_shared<SignVerifyOptions>();
+    auto* verify_command = command->add_subcommand("verify", "Verify digital signatures in a PDF document");
+
+    verify_command->add_option("input", verify_options->input, "Input PDF file")
         ->required()
         ->check(CLI::ExistingFile);
-    verify_cmd->add_option("-c,--trusted-cert", verify_opts->trusted_certs,
-                           "PEM certificate file to add to the trust store (repeatable)")
+    verify_command->add_option("-c,--trusted-cert", verify_options->trusted_certificates,
+        "PEM certificate file to add to the trust store (repeatable)")
         ->check(CLI::ExistingFile);
-    verify_cmd->add_flag("!--no-system-certs", verify_opts->load_system_certs,
-                         "Do not load system default trusted certificates");
-    verify_cmd->add_flag("--skip-cert-validation", verify_opts->skip_cert_validation,
-                         "Skip certificate chain validation (cryptographic check only)");
-    verify_cmd->add_flag("--check-signing-time", verify_opts->check_signing_time,
-                         "Verify that the certificate was valid at the time of signing");
-    verify_cmd->add_flag("--allow-weak", verify_opts->allow_weak,
-                         "Allow weak digest algorithms (MD5, SHA-1, RSA < 2048)");
-    verify_cmd->add_flag("--json", verify_opts->json_output,
-                         "Output results as JSON");
+    verify_command->add_flag("!--no-system-certs", verify_options->load_system_certificates,
+        "Do not load system default trusted certificates");
+    verify_command->add_flag("--skip-cert-validation", verify_options->skip_certificate_validation,
+        "Skip certificate chain validation (cryptographic check only)");
+    verify_command->add_flag("--check-signing-time", verify_options->check_signing_time,
+        "Verify that the certificate was valid at the time of signing");
+    verify_command->add_flag("--allow-weak", verify_options->allow_weak_algorithms,
+        "Allow weak digest algorithms (MD5, SHA-1, RSA < 2048)");
+    verify_command->add_flag("--json", verify_options->json_output, "Output results as JSON");
 
-    verify_cmd->callback([verify_opts]() {
-        try {
-            std::exit(run_sign_verify(*verify_opts));
-        } catch (const pdf_error& e) {
-            report_error(e);
-            std::exit(1);
-        }
+    verify_command->callback([verify_options, &exit_code]() {
+        exit_code = process_sign_verify(*verify_options);
     });
 }
 
-} // namespace vanillapdf::cli::commands
+} // cli
+} // vanillapdf

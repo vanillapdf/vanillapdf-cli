@@ -1,19 +1,19 @@
-#include "utils/page_range.hpp"
+#include "utils/page_range.h"
+
+#include <fmt/format.h>
 
 #include <algorithm>
 #include <charconv>
 #include <system_error>
 
-#include <fmt/format.h>
-
-namespace vanillapdf::cli {
+namespace vanillapdf {
+namespace cli {
 
 namespace {
 
 const std::string_view WHITESPACE = " \t";
 
 std::string_view trim(std::string_view value) {
-
     auto first_position = value.find_first_not_of(WHITESPACE);
     if (first_position == std::string_view::npos) {
         return std::string_view();
@@ -27,7 +27,6 @@ std::string_view trim(std::string_view value) {
 // A single page: a 1-based number, first/begin, or last/end. The entry is the
 // whole comma-separated entry the page came from, used in error messages.
 std::size_t resolve_page(std::string_view page_text, std::string_view entry, std::size_t page_count) {
-
     std::size_t page_number = 0;
 
     if (page_text == "first" || page_text == "begin") {
@@ -41,22 +40,21 @@ std::size_t resolve_page(std::string_view page_text, std::string_view entry, std
 
         bool parsed = (parse_result.ec == std::errc()) && (parse_result.ptr == text_end);
         if (page_text.empty() || !parsed) {
-            throw page_range_error(fmt::format("invalid page '{}'", entry));
+            throw PageRangeException(fmt::format("invalid page '{}'", entry));
         }
     }
 
     if (page_number < 1 || page_number > page_count) {
-        throw page_range_error(fmt::format("page '{}' is out of range (document has {} pages)",
+        throw PageRangeException(fmt::format("page '{}' is out of range (document has {} pages)",
             page_text, page_count));
     }
 
     return page_number;
 }
 
-// Add the pages one entry denotes (without its leading '!') to pages.
+// Add the pages one entry denotes (without its leading '!') to pages
 void add_entry_pages(std::string_view entry_body, std::string_view entry, std::size_t page_count,
     std::set<std::size_t>& pages) {
-
     if (entry_body == "odd" || entry_body == "even") {
         std::size_t page_number = (entry_body == "odd") ? 1 : 2;
         while (page_number <= page_count) {
@@ -82,15 +80,18 @@ void add_entry_pages(std::string_view entry_body, std::string_view entry, std::s
     // A reversed range selects the same pages
     auto first_page = std::min(from_page, to_page);
     auto last_page = std::max(from_page, to_page);
-    for (auto page_number = first_page; page_number <= last_page; page_number += 1) {
+    for (auto page_number = first_page; page_number <= last_page; page_number++) {
         pages.insert(page_number);
     }
 }
 
 } // namespace
 
-std::set<std::size_t> resolve_page_range(std::string_view range, std::size_t page_count) {
+PageRangeException::PageRangeException(const std::string& message)
+    : std::invalid_argument(message) {
+}
 
+std::set<std::size_t> resolve_page_range(std::string_view range, std::size_t page_count) {
     std::set<std::size_t> included_pages;
     std::set<std::size_t> excluded_pages;
     bool has_inclusion = false;
@@ -105,7 +106,7 @@ std::set<std::size_t> resolve_page_range(std::string_view range, std::size_t pag
         auto raw_entry = range.substr(entry_start, entry_length);
         auto entry = trim(raw_entry);
         if (entry.empty()) {
-            throw page_range_error(fmt::format("empty entry in page range '{}'", range));
+            throw PageRangeException(fmt::format("empty entry in page range '{}'", range));
         }
 
         if (entry.front() == '!') {
@@ -125,7 +126,7 @@ std::set<std::size_t> resolve_page_range(std::string_view range, std::size_t pag
 
     // A range of only exclusions starts from every page
     if (!has_inclusion) {
-        for (std::size_t page_number = 1; page_number <= page_count; page_number += 1) {
+        for (std::size_t page_number = 1; page_number <= page_count; page_number++) {
             included_pages.insert(page_number);
         }
     }
@@ -137,4 +138,5 @@ std::set<std::size_t> resolve_page_range(std::string_view range, std::size_t pag
     return included_pages;
 }
 
-} // namespace vanillapdf::cli
+} // cli
+} // vanillapdf

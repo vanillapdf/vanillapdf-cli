@@ -1,4 +1,6 @@
-# vanillapdf-cli — PDF manipulation from the command line
+# vanillapdf-cli
+
+**The command-line toolkit for professional PDF processing, validation and digital signatures.**
 
 <div align="center">
 

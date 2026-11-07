@@ -1,13 +1,20 @@
+#include "commands/commands.h"
+#include "utils/encoding.h"
+#include "utils/error.h"
+#include "utils/handle_guard.h"
+#include "utils/json.h"
+
 #include <CLI/CLI.hpp>
+
 #include <iostream>
 #include <map>
 #include <memory>
+#include <string>
 
-#include "commands/commands.hpp"
-#include "utils/encoding.hpp"
-#include "utils/json.hpp"
+namespace vanillapdf {
+namespace cli {
 
-namespace vanillapdf::cli::commands {
+namespace {
 
 struct InfoOptions {
     std::string input;
@@ -15,14 +22,14 @@ struct InfoOptions {
 };
 
 // The document information dictionary fields, with their human-readable label
-// and JSON key, rendered in this order by both output modes.
+// and JSON key, rendered in this order by both output modes
 struct InfoField {
     const char* label;
     const char* key;
     error_type (*getter)(DocumentInfoHandle*, StringObjectHandle**);
 };
 
-static const InfoField info_fields[] = {
+const InfoField INFO_FIELDS[] = {
     {"Title",    "title",    DocumentInfo_GetTitle},
     {"Author",   "author",   DocumentInfo_GetAuthor},
     {"Subject",  "subject",  DocumentInfo_GetSubject},
@@ -31,123 +38,145 @@ static const InfoField info_fields[] = {
     {"Producer", "producer", DocumentInfo_GetProducer},
 };
 
-static void print_optional_field(DocumentInfoHandle* info, const InfoField& field) {
-    StringObjectPtr text;
-    error_type err = field.getter(info, text.put());
-    if (err == VANILLAPDF_ERROR_SUCCESS) {
-        std::cout << field.label << ": " << to_string_utf8(text.get()) << "\n";
-    } else if (err == VANILLAPDF_ERROR_OBJECT_MISSING) {
-        std::cout << field.label << ": N/A\n";
-    } else {
-        std::cout << field.label << ": <unable to parse>";
-        if (vanillapdf::cli::g_verbose) {
-            std::cout << " (" << vanillapdf::cli::last_error_message() << ")";
-        }
-        std::cout << "\n";
+const std::map<PDFVersion, const char*> PDF_VERSION_NAMES = {
+    {PDFVersion_10, "1.0"}, {PDFVersion_11, "1.1"}, {PDFVersion_12, "1.2"},
+    {PDFVersion_13, "1.3"}, {PDFVersion_14, "1.4"}, {PDFVersion_15, "1.5"},
+    {PDFVersion_16, "1.6"}, {PDFVersion_17, "1.7"}, {PDFVersion_20, "2.0"},
+};
+
+void print_optional_field(DocumentInfoHandle* document_info, const InfoField& field) {
+    StringObjectGuard text;
+    error_type result = field.getter(document_info, text.out());
+
+    if (result == VANILLAPDF_ERROR_SUCCESS) {
+        auto value = to_string_utf8(text);
+        std::cout << field.label << ": " << value << "\n";
+        return;
     }
+
+    if (result == VANILLAPDF_ERROR_OBJECT_MISSING) {
+        std::cout << field.label << ": N/A\n";
+        return;
+    }
+
+    std::cout << field.label << ": <unable to parse>";
+    if (g_verbose) {
+        auto detail = last_error_message();
+        std::cout << " (" << detail << ")";
+    }
+
+    std::cout << "\n";
 }
 
-static void print_info_text(const std::string& file, const char* version,
-                            size_type pages, DocumentInfoHandle* info) {
+void print_info_text(const std::string& file, const char* version, size_type page_count,
+    DocumentInfoHandle* document_info) {
     std::cout << "File: " << file << "\n";
-    if (version) {
+    if (version != nullptr) {
         std::cout << "PDF Version: " << version << "\n";
     }
-    std::cout << "Pages: " << pages << "\n";
-    if (info) {
-        for (const auto& field : info_fields) {
-            print_optional_field(info, field);
+
+    std::cout << "Pages: " << page_count << "\n";
+    if (document_info != nullptr) {
+        for (const auto& field : INFO_FIELDS) {
+            print_optional_field(document_info, field);
         }
     }
 }
 
-static void print_info_json(const std::string& file, const char* version,
-                            size_type pages, DocumentInfoHandle* info) {
+void print_info_json(const std::string& file, const char* version, size_type page_count,
+    DocumentInfoHandle* document_info) {
     std::cout << "{\n";
     std::cout << "  \"file\": " << json_escape(file) << ",\n";
     std::cout << "  \"pdf_version\": ";
-    if (version) {
+    if (version != nullptr) {
         std::cout << json_escape(version);
     } else {
         std::cout << "null";
     }
-    std::cout << ",\n";
-    std::cout << "  \"pages\": " << pages;
 
-    // A missing or unparseable field is emitted as null so the shape is stable.
-    for (const auto& field : info_fields) {
+    std::cout << ",\n";
+    std::cout << "  \"pages\": " << page_count;
+
+    // A missing or unparseable field is emitted as null so the shape is stable
+    for (const auto& field : INFO_FIELDS) {
         std::cout << ",\n  " << json_escape(field.key) << ": ";
-        StringObjectPtr text;
-        if (info && field.getter(info, text.put()) == VANILLAPDF_ERROR_SUCCESS) {
-            std::cout << json_escape(to_string_utf8(text.get()));
-        } else {
+
+        if (document_info == nullptr) {
             std::cout << "null";
+            continue;
         }
+
+        StringObjectGuard text;
+        error_type result = field.getter(document_info, text.out());
+        if (result != VANILLAPDF_ERROR_SUCCESS) {
+            std::cout << "null";
+            continue;
+        }
+
+        auto value = to_string_utf8(text);
+        std::cout << json_escape(value);
     }
 
     std::cout << "\n}\n";
 }
 
-static int run_info(const InfoOptions& opts) {
-    DocumentPtr document;
-    check(Document_Open(opts.input.c_str(), document.put()), "Failed to open document");
+int process_info(const InfoOptions& options) {
+    DocumentGuard document;
+    THROW_IF_NOT_SUCCESS(Document_Open(options.input.c_str(), document.out()), "Failed to open document");
 
-    CatalogPtr catalog;
-    check(Document_GetCatalog(document.get(), catalog.put()), "Failed to get catalog");
+    CatalogGuard catalog;
+    THROW_IF_NOT_SUCCESS(Document_GetCatalog(document, catalog.out()), "Failed to get catalog");
 
-    PageTreePtr page_tree;
-    check(Catalog_GetPages(catalog.get(), page_tree.put()), "Failed to get page tree");
+    PageTreeGuard page_tree;
+    THROW_IF_NOT_SUCCESS(Catalog_GetPages(catalog, page_tree.out()), "Failed to get page tree");
 
     size_type page_count = 0;
-    check(PageTree_GetPageCount(page_tree.get(), &page_count), "Failed to get page count");
+    THROW_IF_NOT_SUCCESS(PageTree_GetPageCount(page_tree, &page_count), "Failed to get page count");
 
-    // PDF version from file header
-    FilePtr file;
+    // PDF version from the file header
+    FileGuard file;
     PDFVersion pdf_version = PDFVersion_Undefined;
-    if (File_Open(opts.input.c_str(), file.put()) == VANILLAPDF_ERROR_SUCCESS) {
-        File_GetVersion(file.get(), &pdf_version);
+    error_type file_result = File_Open(options.input.c_str(), file.out());
+    if (file_result == VANILLAPDF_ERROR_SUCCESS) {
+        File_GetVersion(file, &pdf_version);
     }
 
-    static const std::map<PDFVersion, const char*> version_names = {
-        {PDFVersion_10, "1.0"}, {PDFVersion_11, "1.1"}, {PDFVersion_12, "1.2"},
-        {PDFVersion_13, "1.3"}, {PDFVersion_14, "1.4"}, {PDFVersion_15, "1.5"},
-        {PDFVersion_16, "1.6"}, {PDFVersion_17, "1.7"}, {PDFVersion_20, "2.0"},
-    };
-    auto ver_it = version_names.find(pdf_version);
-    const char* version_str = (ver_it != version_names.end()) ? ver_it->second : nullptr;
-
-    DocumentInfoPtr info;
-    DocumentInfoHandle* info_handle = nullptr;
-    if (Document_GetDocumentInfo(document.get(), info.put()) == VANILLAPDF_ERROR_SUCCESS) {
-        info_handle = info.get();
+    const char* version_name = nullptr;
+    auto version_iterator = PDF_VERSION_NAMES.find(pdf_version);
+    if (version_iterator != PDF_VERSION_NAMES.end()) {
+        version_name = version_iterator->second;
     }
 
-    if (opts.json_output) {
-        print_info_json(opts.input, version_str, page_count, info_handle);
+    DocumentInfoGuard document_info;
+    error_type info_result = Document_GetDocumentInfo(document, document_info.out());
+    if (info_result != VANILLAPDF_ERROR_SUCCESS) {
+        document_info.reset();
+    }
+
+    if (options.json_output) {
+        print_info_json(options.input, version_name, page_count, document_info);
     } else {
-        print_info_text(opts.input, version_str, page_count, info_handle);
+        print_info_text(options.input, version_name, page_count, document_info);
     }
 
-    return 0;
+    return VANILLAPDF_CLI_ERROR_SUCCESS;
 }
 
-void register_info(CLI::App& app) {
-    auto opts = std::make_shared<InfoOptions>();
+} // namespace
 
-    auto* cmd = app.add_subcommand("info", "Display PDF file information");
-    cmd->add_option("input", opts->input, "Input PDF file")
+void register_info(CLI::App& app, int& exit_code) {
+    auto options = std::make_shared<InfoOptions>();
+    auto* command = app.add_subcommand("info", "Display PDF file information");
+
+    command->add_option("input", options->input, "Input PDF file")
         ->required()
         ->check(CLI::ExistingFile);
-    cmd->add_flag("--json", opts->json_output, "Output results as JSON");
+    command->add_flag("--json", options->json_output, "Output results as JSON");
 
-    cmd->callback([opts]() {
-        try {
-            std::exit(run_info(*opts));
-        } catch (const pdf_error& e) {
-            report_error(e);
-            std::exit(1);
-        }
+    command->callback([options, &exit_code]() {
+        exit_code = process_info(*options);
     });
 }
 
-} // namespace vanillapdf::cli::commands
+} // cli
+} // vanillapdf

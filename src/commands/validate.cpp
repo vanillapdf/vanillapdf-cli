@@ -1,13 +1,18 @@
+#include "commands/commands.h"
+#include "utils/error.h"
+#include "utils/handle_guard.h"
+#include "utils/json.h"
+
 #include <CLI/CLI.hpp>
+
 #include <iostream>
+#include <memory>
 #include <string>
 
-#include "commands/commands.hpp"
-#include "utils/error.hpp"
-#include "utils/handles.hpp"
-#include "utils/json.hpp"
+namespace vanillapdf {
+namespace cli {
 
-namespace vanillapdf::cli::commands {
+namespace {
 
 struct ValidateOptions {
     std::string input;
@@ -15,155 +20,181 @@ struct ValidateOptions {
     bool json_output = false;
 };
 
-static const char* severity_string(FileStructureIssueSeverityType s) {
-    switch (s) {
-    case FileStructureIssueSeverity_Info:    return "Info";
-    case FileStructureIssueSeverity_Warning: return "Warning";
-    case FileStructureIssueSeverity_Error:   return "Error";
-    default:                                 return "Undefined";
+// One file structure issue, read out of its handle
+struct ValidationIssue {
+    FileStructureIssueSeverityType severity = FileStructureIssueSeverity_Undefined;
+    FileStructureIssueCodeType code = FileStructureIssueCode_Undefined;
+    std::string message;
+    biguint_type object_number = 0;
+    ushort_type generation_number = 0;
+};
+
+const char* severity_name(FileStructureIssueSeverityType severity) {
+    switch (severity) {
+        case FileStructureIssueSeverity_Info:    return "Info";
+        case FileStructureIssueSeverity_Warning: return "Warning";
+        case FileStructureIssueSeverity_Error:   return "Error";
+        default:                                 return "Undefined";
     }
 }
 
-static const char* issue_code_name(FileStructureIssueCodeType c) {
-    switch (c) {
-    case FileStructureIssueCode_HeaderMissing:                        return "HeaderMissing";
-    case FileStructureIssueCode_HeaderVersionUndefined:               return "HeaderVersionUndefined";
-    case FileStructureIssueCode_TrailerMissingSize:                   return "TrailerMissingSize";
-    case FileStructureIssueCode_TrailerMissingRoot:                   return "TrailerMissingRoot";
-    case FileStructureIssueCode_TrailerSizeMismatch:                  return "TrailerSizeMismatch";
-    case FileStructureIssueCode_TrailerMissing:                       return "TrailerMissing";
-    case FileStructureIssueCode_XrefUsedEntryBadOffset:               return "XrefUsedEntryBadOffset";
-    case FileStructureIssueCode_XrefUsedEntryOffsetExceedsFileSize:   return "XrefUsedEntryOffsetExceedsFileSize";
-    case FileStructureIssueCode_XrefCompressedEntryMissingObjectStream: return "XrefCompressedEntryMissingObjectStream";
-    case FileStructureIssueCode_XrefFreeEntryInvalidNextFree:         return "XrefFreeEntryInvalidNextFree";
-    case FileStructureIssueCode_TrailerRootReferenceNotInXref:        return "TrailerRootReferenceNotInXref";
-    case FileStructureIssueCode_TrailerInfoReferenceNotInXref:        return "TrailerInfoReferenceNotInXref";
-    case FileStructureIssueCode_XrefChainEmpty:                       return "XrefChainEmpty";
-    default:                                                          return "Undefined";
+const char* issue_code_name(FileStructureIssueCodeType code) {
+    switch (code) {
+        case FileStructureIssueCode_HeaderMissing:                          return "HeaderMissing";
+        case FileStructureIssueCode_HeaderVersionUndefined:                 return "HeaderVersionUndefined";
+        case FileStructureIssueCode_TrailerMissingSize:                     return "TrailerMissingSize";
+        case FileStructureIssueCode_TrailerMissingRoot:                     return "TrailerMissingRoot";
+        case FileStructureIssueCode_TrailerSizeMismatch:                    return "TrailerSizeMismatch";
+        case FileStructureIssueCode_TrailerMissing:                         return "TrailerMissing";
+        case FileStructureIssueCode_XrefUsedEntryBadOffset:                 return "XrefUsedEntryBadOffset";
+        case FileStructureIssueCode_XrefUsedEntryOffsetExceedsFileSize:     return "XrefUsedEntryOffsetExceedsFileSize";
+        case FileStructureIssueCode_XrefCompressedEntryMissingObjectStream: return "XrefCompressedEntryMissingObjectStream";
+        case FileStructureIssueCode_XrefFreeEntryInvalidNextFree:           return "XrefFreeEntryInvalidNextFree";
+        case FileStructureIssueCode_TrailerRootReferenceNotInXref:          return "TrailerRootReferenceNotInXref";
+        case FileStructureIssueCode_TrailerInfoReferenceNotInXref:          return "TrailerInfoReferenceNotInXref";
+        case FileStructureIssueCode_XrefChainEmpty:                         return "XrefChainEmpty";
+        default:                                                            return "Undefined";
     }
 }
 
-static std::string issue_message(FileStructureIssueHandle* issue) {
-    BufferPtr buf;
-    check(FileStructureIssue_GetMessage(issue, buf.put()), "Failed to get issue message");
-    string_type data = nullptr;
-    size_type size = 0;
-    check(Buffer_GetData(buf.get(), &data, &size), "Failed to read issue message");
-    return std::string(data, size);
+ValidationIssue read_issue(FileStructureValidationResultHandle* validation_result, size_type index) {
+    FileStructureIssueGuard issue_handle;
+    THROW_IF_NOT_SUCCESS(FileStructureValidationResult_GetIssueAt(validation_result, index, issue_handle.out()),
+        "Failed to get issue");
+
+    ValidationIssue issue;
+    THROW_IF_NOT_SUCCESS(FileStructureIssue_GetSeverity(issue_handle, &issue.severity), "Failed to get issue severity");
+    THROW_IF_NOT_SUCCESS(FileStructureIssue_GetCode(issue_handle, &issue.code), "Failed to get issue code");
+    THROW_IF_NOT_SUCCESS(FileStructureIssue_GetObjectNumber(issue_handle, &issue.object_number),
+        "Failed to get object number");
+    THROW_IF_NOT_SUCCESS(FileStructureIssue_GetGenerationNumber(issue_handle, &issue.generation_number),
+        "Failed to get generation number");
+
+    BufferGuard message_buffer;
+    THROW_IF_NOT_SUCCESS(FileStructureIssue_GetMessage(issue_handle, message_buffer.out()),
+        "Failed to get issue message");
+
+    string_type message_data = nullptr;
+    size_type message_size = 0;
+    THROW_IF_NOT_SUCCESS(Buffer_GetData(message_buffer, &message_data, &message_size), "Failed to read issue message");
+    issue.message = std::string(message_data, message_size);
+
+    return issue;
 }
 
-static int run_validate(const ValidateOptions& opts) {
-    FilePtr file;
-    check(File_Open(opts.input.c_str(), file.put()), "Failed to open file");
-    check(File_Initialize(file.get()), "Failed to initialize file");
+void print_issue_json(const ValidationIssue& issue) {
+    auto severity = severity_name(issue.severity);
+    auto code_name = issue_code_name(issue.code);
+    auto code_converted = static_cast<int>(issue.code);
 
-    FileStructureValidationResultPtr result;
-    check(FileStructureValidator_Validate(file.get(), result.put()), "Failed to validate file structure");
+    std::cout << "\n    {\n";
+    std::cout << "      \"severity\": " << json_escape(severity) << ",\n";
+    std::cout << "      \"code\": " << code_converted << ",\n";
+    std::cout << "      \"name\": " << json_escape(code_name) << ",\n";
+    std::cout << "      \"message\": " << json_escape(issue.message);
+    if (issue.object_number != 0) {
+        std::cout << ",\n      \"object\": " << issue.object_number;
+        std::cout << ",\n      \"generation\": " << issue.generation_number;
+    }
+
+    std::cout << "\n    }";
+}
+
+void print_issue_text(const ValidationIssue& issue) {
+    auto severity = severity_name(issue.severity);
+    auto code_name = issue_code_name(issue.code);
+    auto code_converted = static_cast<int>(issue.code);
+
+    std::cout << "[" << severity << "] " << code_name << " (" << code_converted << "): " << issue.message;
+    if (issue.object_number != 0) {
+        std::cout << " (object " << issue.object_number << " " << issue.generation_number << " R)";
+    }
+
+    std::cout << "\n";
+}
+
+int process_validate(const ValidateOptions& options) {
+    FileGuard file;
+    THROW_IF_NOT_SUCCESS(File_Open(options.input.c_str(), file.out()), "Failed to open file");
+    THROW_IF_NOT_SUCCESS(File_Initialize(file), "Failed to initialize file");
+
+    FileStructureValidationResultGuard validation_result;
+    THROW_IF_NOT_SUCCESS(FileStructureValidator_Validate(file, validation_result.out()),
+        "Failed to validate file structure");
 
     boolean_type is_valid = VANILLAPDF_RV_FALSE;
-    check(FileStructureValidationResult_IsValid(result.get(), &is_valid), "Failed to check validity");
+    THROW_IF_NOT_SUCCESS(FileStructureValidationResult_IsValid(validation_result, &is_valid),
+        "Failed to check validity");
 
     size_type issue_count = 0;
-    check(FileStructureValidationResult_GetIssueCount(result.get(), &issue_count), "Failed to get issue count");
+    THROW_IF_NOT_SUCCESS(FileStructureValidationResult_GetIssueCount(validation_result, &issue_count),
+        "Failed to get issue count");
 
     size_type error_count = 0;
-    check(FileStructureValidationResult_GetErrorCount(result.get(), &error_count), "Failed to get error count");
+    THROW_IF_NOT_SUCCESS(FileStructureValidationResult_GetErrorCount(validation_result, &error_count),
+        "Failed to get error count");
 
     size_type warning_count = 0;
-    check(FileStructureValidationResult_GetWarningCount(result.get(), &warning_count), "Failed to get warning count");
+    THROW_IF_NOT_SUCCESS(FileStructureValidationResult_GetWarningCount(validation_result, &warning_count),
+        "Failed to get warning count");
 
-    if (opts.json_output) {
+    bool valid = (is_valid != VANILLAPDF_RV_FALSE);
+
+    if (options.json_output) {
         std::cout << "{\n";
-        std::cout << "  \"file\": " << json_escape(opts.input) << ",\n";
-        std::cout << "  \"valid\": " << (is_valid != VANILLAPDF_RV_FALSE ? "true" : "false") << ",\n";
+        std::cout << "  \"file\": " << json_escape(options.input) << ",\n";
+        std::cout << "  \"valid\": " << (valid ? "true" : "false") << ",\n";
         std::cout << "  \"error_count\": " << error_count << ",\n";
         std::cout << "  \"warning_count\": " << warning_count << ",\n";
         std::cout << "  \"issues\": [";
 
-        for (size_type i = 0; i < issue_count; ++i) {
-            FileStructureIssuePtr issue;
-            check(FileStructureValidationResult_GetIssueAt(result.get(), i, issue.put()), "Failed to get issue");
-
-            FileStructureIssueSeverityType severity = FileStructureIssueSeverity_Undefined;
-            check(FileStructureIssue_GetSeverity(issue.get(), &severity), "Failed to get issue severity");
-
-            FileStructureIssueCodeType code = FileStructureIssueCode_Undefined;
-            check(FileStructureIssue_GetCode(issue.get(), &code), "Failed to get issue code");
-
-            biguint_type obj_number = 0;
-            check(FileStructureIssue_GetObjectNumber(issue.get(), &obj_number), "Failed to get object number");
-
-            ushort_type gen_number = 0;
-            check(FileStructureIssue_GetGenerationNumber(issue.get(), &gen_number), "Failed to get generation number");
-
-            if (i > 0) std::cout << ",";
-            std::cout << "\n    {\n";
-            std::cout << "      \"severity\": " << json_escape(severity_string(severity)) << ",\n";
-            std::cout << "      \"code\": " << static_cast<int>(code) << ",\n";
-            std::cout << "      \"name\": " << json_escape(issue_code_name(code)) << ",\n";
-            std::cout << "      \"message\": " << json_escape(issue_message(issue.get()));
-            if (obj_number != 0) {
-                std::cout << ",\n      \"object\": " << obj_number;
-                std::cout << ",\n      \"generation\": " << gen_number;
+        for (size_type i = 0; i < issue_count; i++) {
+            auto issue = read_issue(validation_result, i);
+            if (i > 0) {
+                std::cout << ",";
             }
-            std::cout << "\n    }";
+
+            print_issue_json(issue);
         }
 
         std::cout << "\n  ]\n}\n";
     } else {
-        std::cout << "File: " << opts.input << "\n";
-        std::cout << "Valid: " << (is_valid != VANILLAPDF_RV_FALSE ? "yes" : "no") << "\n";
+        std::cout << "File: " << options.input << "\n";
+        std::cout << "Valid: " << (valid ? "yes" : "no") << "\n";
         std::cout << "Errors: " << error_count << "  Warnings: " << warning_count << "\n";
 
-        for (size_type i = 0; i < issue_count; ++i) {
-            FileStructureIssuePtr issue;
-            check(FileStructureValidationResult_GetIssueAt(result.get(), i, issue.put()), "Failed to get issue");
-
-            FileStructureIssueSeverityType severity = FileStructureIssueSeverity_Undefined;
-            check(FileStructureIssue_GetSeverity(issue.get(), &severity), "Failed to get issue severity");
-
-            FileStructureIssueCodeType code = FileStructureIssueCode_Undefined;
-            check(FileStructureIssue_GetCode(issue.get(), &code), "Failed to get issue code");
-
-            biguint_type obj_number = 0;
-            check(FileStructureIssue_GetObjectNumber(issue.get(), &obj_number), "Failed to get object number");
-
-            ushort_type gen_number = 0;
-            check(FileStructureIssue_GetGenerationNumber(issue.get(), &gen_number), "Failed to get generation number");
-
-            std::cout << "[" << severity_string(severity) << "] "
-                      << issue_code_name(code) << " (" << static_cast<int>(code) << "): "
-                      << issue_message(issue.get());
-            if (obj_number != 0) {
-                std::cout << " (object " << obj_number << " " << gen_number << " R)";
-            }
-            std::cout << "\n";
+        for (size_type i = 0; i < issue_count; i++) {
+            auto issue = read_issue(validation_result, i);
+            print_issue_text(issue);
         }
     }
 
     bool has_errors = (error_count > 0);
     bool has_warnings = (warning_count > 0);
-    return (has_errors || (opts.strict && has_warnings)) ? 1 : 0;
+    if (has_errors || (options.strict && has_warnings)) {
+        return VANILLAPDF_CLI_ERROR_FAILURE;
+    }
+
+    return VANILLAPDF_CLI_ERROR_SUCCESS;
 }
 
-void register_validate(CLI::App& app) {
-    auto opts = std::make_shared<ValidateOptions>();
-    auto* cmd = app.add_subcommand("validate", "Validate PDF file structure");
-    cmd->add_option("input", opts->input, "Input PDF file")
+} // namespace
+
+void register_validate(CLI::App& app, int& exit_code) {
+    auto options = std::make_shared<ValidateOptions>();
+    auto* command = app.add_subcommand("validate", "Validate PDF file structure");
+
+    command->add_option("input", options->input, "Input PDF file")
         ->required()
         ->check(CLI::ExistingFile);
-    cmd->add_flag("--strict", opts->strict,
-                  "Exit with failure if any warnings are found (default: only errors cause failure)");
-    cmd->add_flag("--json", opts->json_output, "Output results as JSON");
+    command->add_flag("--strict", options->strict,
+        "Exit with failure if any warnings are found (default: only errors cause failure)");
+    command->add_flag("--json", options->json_output, "Output results as JSON");
 
-    cmd->callback([opts]() {
-        try {
-            std::exit(run_validate(*opts));
-        } catch (const pdf_error& e) {
-            report_error(e);
-            std::exit(1);
-        }
+    command->callback([options, &exit_code]() {
+        exit_code = process_validate(*options);
     });
 }
 
-} // namespace vanillapdf::cli::commands
+} // cli
+} // vanillapdf

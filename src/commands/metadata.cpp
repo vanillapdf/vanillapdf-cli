@@ -1,21 +1,27 @@
+#include "commands/commands.h"
+#include "utils/error.h"
+#include "utils/handle_guard.h"
+
 #include <CLI/CLI.hpp>
+#include <fmt/chrono.h>
+
 #include <ctime>
 #include <iostream>
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 
-#include <fmt/chrono.h>
+namespace vanillapdf {
+namespace cli {
 
-#include "commands/commands.hpp"
-#include "utils/handles.hpp"
-
-namespace vanillapdf::cli::commands {
+namespace {
 
 struct MetadataOptions {
     std::string input;
     std::string output;
     std::string password;
+
     // nullopt: leave untouched. empty string: remove the key. otherwise: set it.
     std::optional<std::string> title;
     std::optional<std::string> author;
@@ -34,215 +40,230 @@ struct MetadataField {
     std::optional<std::string> MetadataOptions::*member;
 };
 
-static const MetadataField metadata_fields[] = {
-    {"Title",    "--title",    "Document title",                &MetadataOptions::title},
-    {"Author",   "--author",   "Document author",               &MetadataOptions::author},
-    {"Subject",  "--subject",  "Document subject",               &MetadataOptions::subject},
-    {"Keywords", "--keywords", "Document keywords",              &MetadataOptions::keywords},
+const MetadataField METADATA_FIELDS[] = {
+    {"Title",    "--title",    "Document title",                        &MetadataOptions::title},
+    {"Author",   "--author",   "Document author",                       &MetadataOptions::author},
+    {"Subject",  "--subject",  "Document subject",                      &MetadataOptions::subject},
+    {"Keywords", "--keywords", "Document keywords",                     &MetadataOptions::keywords},
     {"Creator",  "--creator",  "Application that created the original", &MetadataOptions::creator},
 };
 
-// Format the current local time as a PDF date string: D:YYYYMMDDHHmmSSOHH'mm'
+// Format the current time as a PDF date string: D:YYYYMMDDHHmmSSOHH'mm'
 // (PDF 32000-1:2008, 7.9.4). Emitted in UTC, so the timezone is a literal
 // "+00'00'" and no local-offset calculation is needed.
-static std::string current_pdf_date() {
-    return fmt::format("D:{:%Y%m%d%H%M%S}+00'00'", fmt::gmtime(std::time(nullptr)));
+std::string current_pdf_date() {
+    auto current_time = std::time(nullptr);
+    auto current_time_utc = fmt::gmtime(current_time);
+    return fmt::format("D:{:%Y%m%d%H%M%S}+00'00'", current_time_utc);
 }
 
 // Resolve a trailer entry (a direct dictionary or an indirect reference to one)
-// to its underlying dictionary object.
-static DictionaryObjectPtr resolve_dictionary(ObjectHandle* obj) {
-    ObjectType type = ObjectType_Undefined;
-    check(Object_GetObjectType(obj, &type), "Failed to get object type");
+// to its underlying dictionary object
+DictionaryObjectGuard resolve_dictionary(ObjectHandle* object) {
+    ObjectType object_type = ObjectType_Undefined;
+    THROW_IF_NOT_SUCCESS(Object_GetObjectType(object, &object_type), "Failed to get object type");
 
-    if (type == ObjectType_IndirectReference) {
-        IndirectReferenceObjectPtr ref;
-        check(IndirectReferenceObject_FromObject(obj, ref.put()), "Failed to read reference");
-        ObjectPtr referenced;
-        check(IndirectReferenceObject_GetReferencedObject(ref.get(), referenced.put()),
-              "Failed to resolve reference");
-        DictionaryObjectPtr dict;
-        check(DictionaryObject_FromObject(referenced.get(), dict.put()),
-              "Info entry does not reference a dictionary");
-        return dict;
+    DictionaryObjectGuard dictionary;
+
+    if (object_type == ObjectType_IndirectReference) {
+        IndirectReferenceObjectGuard reference;
+        THROW_IF_NOT_SUCCESS(IndirectReferenceObject_FromObject(object, reference.out()), "Failed to read reference");
+
+        ObjectGuard referenced_object;
+        THROW_IF_NOT_SUCCESS(IndirectReferenceObject_GetReferencedObject(reference, referenced_object.out()),
+            "Failed to resolve reference");
+
+        THROW_IF_NOT_SUCCESS(DictionaryObject_FromObject(referenced_object, dictionary.out()),
+            "Info entry does not reference a dictionary");
+
+        return dictionary;
     }
 
-    DictionaryObjectPtr dict;
-    check(DictionaryObject_FromObject(obj, dict.put()), "Info entry is not a dictionary");
-    return dict;
+    THROW_IF_NOT_SUCCESS(DictionaryObject_FromObject(object, dictionary.out()), "Info entry is not a dictionary");
+    return dictionary;
 }
 
 // Locate the document information dictionary. The chain is ordered newest-first,
 // so the first trailer holding an /Info entry wins. If no trailer has one, create
 // a fresh Info dictionary, register it as a new indirect object, and link it from
 // the newest trailer.
-static DictionaryObjectPtr get_or_create_info(FileHandle* file) {
-    XrefChainPtr chain;
-    check(File_XrefChain(file, chain.put()), "Failed to get xref chain");
+DictionaryObjectGuard get_or_create_info(FileHandle* file) {
+    XrefChainGuard xref_chain;
+    THROW_IF_NOT_SUCCESS(File_XrefChain(file, xref_chain.out()), "Failed to get xref chain");
 
-    XrefChainIteratorPtr it;
-    check(XrefChain_GetIterator(chain.get(), it.put()), "Failed to iterate xref chain");
+    XrefChainIteratorGuard xref_iterator;
+    THROW_IF_NOT_SUCCESS(XrefChain_GetIterator(xref_chain, xref_iterator.out()), "Failed to iterate xref chain");
 
-    NameObjectPtr info_key;
-    check(NameObject_CreateFromDecodedString("Info", info_key.put()), "Failed to create Info name");
+    NameObjectGuard info_key;
+    THROW_IF_NOT_SUCCESS(NameObject_CreateFromDecodedString("Info", info_key.out()), "Failed to create Info name");
 
-    DictionaryObjectPtr newest_trailer;
+    DictionaryObjectGuard newest_trailer;
 
     while (true) {
-        boolean_type valid = VANILLAPDF_RV_FALSE;
-        check(XrefChainIterator_IsValid(it.get(), &valid), "Failed to check iterator");
-        if (valid != VANILLAPDF_RV_TRUE) {
+        boolean_type iterator_valid = VANILLAPDF_RV_FALSE;
+        THROW_IF_NOT_SUCCESS(XrefChainIterator_IsValid(xref_iterator, &iterator_valid), "Failed to check iterator");
+        if (iterator_valid != VANILLAPDF_RV_TRUE) {
             break;
         }
 
-        XrefPtr xref;
-        check(XrefChainIterator_GetValue(it.get(), xref.put()), "Failed to get xref section");
+        XrefGuard xref;
+        THROW_IF_NOT_SUCCESS(XrefChainIterator_GetValue(xref_iterator, xref.out()), "Failed to get xref section");
 
-        DictionaryObjectPtr trailer;
-        check(Xref_GetTrailerDictionary(xref.get(), trailer.put()), "Failed to get trailer");
+        DictionaryObjectGuard trailer;
+        THROW_IF_NOT_SUCCESS(Xref_GetTrailerDictionary(xref, trailer.out()), "Failed to get trailer");
 
-        boolean_type found = VANILLAPDF_RV_FALSE;
-        ObjectPtr info_obj;
-        check(DictionaryObject_TryFind(trailer.get(), info_key.get(), &found, info_obj.put()),
-              "Failed to look up Info entry");
-        if (found == VANILLAPDF_RV_TRUE) {
-            return resolve_dictionary(info_obj.get());
+        boolean_type info_found = VANILLAPDF_RV_FALSE;
+        ObjectGuard info_object;
+        THROW_IF_NOT_SUCCESS(DictionaryObject_TryFind(trailer, info_key, &info_found, info_object.out()),
+            "Failed to look up Info entry");
+
+        if (info_found == VANILLAPDF_RV_TRUE) {
+            return resolve_dictionary(info_object);
         }
 
         // Remember the newest trailer as the place to attach a new Info dictionary.
+        // The guard is move-only, so std::move is mandatory here.
         if (!newest_trailer) {
             newest_trailer = std::move(trailer);
         }
 
-        check(XrefChainIterator_Next(it.get()), "Failed to advance iterator");
+        THROW_IF_NOT_SUCCESS(XrefChainIterator_Next(xref_iterator), "Failed to advance iterator");
     }
 
     if (!newest_trailer) {
-        throw pdf_error(VANILLAPDF_ERROR_GENERAL, "Document has no trailer dictionary");
+        throw PdfException(VANILLAPDF_ERROR_GENERAL, "Document has no trailer dictionary");
     }
 
-    // No Info dictionary present: create one and register it as a new indirect object.
-    DictionaryObjectPtr info;
-    check(DictionaryObject_Create(info.put()), "Failed to create Info dictionary");
+    // No Info dictionary present: create one and register it as a new indirect object
+    DictionaryObjectGuard info_dictionary;
+    THROW_IF_NOT_SUCCESS(DictionaryObject_Create(info_dictionary.out()), "Failed to create Info dictionary");
 
-    ObjectPtr info_as_object;
-    check(DictionaryObject_ToObject(info.get(), info_as_object.put()), "Failed to convert Info dictionary");
+    ObjectGuard info_dictionary_object;
+    THROW_IF_NOT_SUCCESS(DictionaryObject_ToObject(info_dictionary, info_dictionary_object.out()),
+        "Failed to convert Info dictionary");
 
-    XrefUsedEntryPtr entry;
-    check(File_AllocateNewEntry(file, entry.put()), "Failed to allocate new object entry");
-    check(XrefUsedEntry_SetReference(entry.get(), info_as_object.get()), "Failed to register Info object");
+    XrefUsedEntryGuard xref_entry;
+    THROW_IF_NOT_SUCCESS(File_AllocateNewEntry(file, xref_entry.out()), "Failed to allocate new object entry");
+    THROW_IF_NOT_SUCCESS(XrefUsedEntry_SetReference(xref_entry, info_dictionary_object),
+        "Failed to register Info object");
 
-    biguint_type obj_number = 0;
-    ushort_type gen_number = 0;
-    check(XrefUsedEntry_GetObjectNumber(entry.get(), &obj_number), "Failed to read object number");
-    check(XrefUsedEntry_GetGenerationNumber(entry.get(), &gen_number), "Failed to read generation number");
+    biguint_type object_number = 0;
+    ushort_type generation_number = 0;
+    THROW_IF_NOT_SUCCESS(XrefUsedEntry_GetObjectNumber(xref_entry, &object_number), "Failed to read object number");
+    THROW_IF_NOT_SUCCESS(XrefUsedEntry_GetGenerationNumber(xref_entry, &generation_number),
+        "Failed to read generation number");
 
-    // Link the new object from the trailer as an indirect reference.
-    IndirectReferenceObjectPtr ref;
-    check(IndirectReferenceObject_Create(ref.put()), "Failed to create Info reference");
-    check(IndirectReferenceObject_SetObjectNumber(ref.get(), obj_number), "Failed to set reference number");
-    check(IndirectReferenceObject_SetGenerationNumber(ref.get(), gen_number), "Failed to set reference generation");
+    // Link the new object from the trailer as an indirect reference
+    IndirectReferenceObjectGuard info_reference;
+    THROW_IF_NOT_SUCCESS(IndirectReferenceObject_Create(info_reference.out()), "Failed to create Info reference");
+    THROW_IF_NOT_SUCCESS(IndirectReferenceObject_SetObjectNumber(info_reference, object_number),
+        "Failed to set reference number");
+    THROW_IF_NOT_SUCCESS(IndirectReferenceObject_SetGenerationNumber(info_reference, generation_number),
+        "Failed to set reference generation");
 
-    ObjectPtr ref_as_object;
-    check(IndirectReferenceObject_ToObject(ref.get(), ref_as_object.put()), "Failed to convert Info reference");
-    check(DictionaryObject_Insert(newest_trailer.get(), info_key.get(), ref_as_object.get(), VANILLAPDF_RV_TRUE),
-          "Failed to link Info dictionary into trailer");
+    ObjectGuard info_reference_object;
+    THROW_IF_NOT_SUCCESS(IndirectReferenceObject_ToObject(info_reference, info_reference_object.out()),
+        "Failed to convert Info reference");
+    THROW_IF_NOT_SUCCESS(DictionaryObject_Insert(newest_trailer, info_key, info_reference_object, VANILLAPDF_RV_TRUE),
+        "Failed to link Info dictionary into trailer");
 
-    return info;
+    return info_dictionary;
 }
 
 // Set a literal-string entry in the info dictionary, or remove it when the value
-// is empty.
-static void apply_field(DictionaryObjectHandle* info, const char* key, const std::string& value) {
-    NameObjectPtr name;
-    check(NameObject_CreateFromDecodedString(key, name.put()), "Failed to create name object");
+// is empty
+void apply_field(DictionaryObjectHandle* info_dictionary, const char* key, const std::string& value) {
+    NameObjectGuard key_name;
+    THROW_IF_NOT_SUCCESS(NameObject_CreateFromDecodedString(key, key_name.out()), "Failed to create name object");
 
     if (value.empty()) {
         boolean_type removed = VANILLAPDF_RV_FALSE;
-        check(DictionaryObject_Remove(info, name.get(), &removed), "Failed to remove entry");
+        THROW_IF_NOT_SUCCESS(DictionaryObject_Remove(info_dictionary, key_name, &removed), "Failed to remove entry");
         return;
     }
 
-    LiteralStringObjectPtr literal;
-    check(LiteralStringObject_CreateFromDecodedString(value.c_str(), literal.put()),
-          "Failed to create string value");
+    LiteralStringObjectGuard literal_string;
+    THROW_IF_NOT_SUCCESS(LiteralStringObject_CreateFromDecodedString(value.c_str(), literal_string.out()),
+        "Failed to create string value");
 
-    StringObjectPtr string_obj;
-    check(LiteralStringObject_ToStringObject(literal.get(), string_obj.put()), "Failed to convert string");
+    StringObjectGuard string_object;
+    THROW_IF_NOT_SUCCESS(LiteralStringObject_ToStringObject(literal_string, string_object.out()),
+        "Failed to convert string");
 
-    ObjectPtr value_obj;
-    check(StringObject_ToObject(string_obj.get(), value_obj.put()), "Failed to convert value");
+    ObjectGuard value_object;
+    THROW_IF_NOT_SUCCESS(StringObject_ToObject(string_object, value_object.out()), "Failed to convert value");
 
-    check(DictionaryObject_Insert(info, name.get(), value_obj.get(), VANILLAPDF_RV_TRUE),
-          "Failed to set entry");
+    THROW_IF_NOT_SUCCESS(DictionaryObject_Insert(info_dictionary, key_name, value_object, VANILLAPDF_RV_TRUE),
+        "Failed to set entry");
 }
 
-static int run_metadata_set(const MetadataOptions& opts) {
-    FilePtr file;
-    check(File_Open(opts.input.c_str(), file.put()), "Failed to open file");
+int process_metadata_set(const MetadataOptions& options) {
+    FileGuard file;
+    THROW_IF_NOT_SUCCESS(File_Open(options.input.c_str(), file.out()), "Failed to open file");
 
     // Document_OpenFile initializes the file (reads the xref chain) and shares its
     // object graph, so mutations below are persisted by the standard Document_Save.
-    DocumentPtr document;
-    check(Document_OpenFile(file.get(), document.put()), "Failed to open document");
+    DocumentGuard document;
+    THROW_IF_NOT_SUCCESS(Document_OpenFile(file, document.out()), "Failed to open document");
 
     // For an encrypted document the writer must re-encrypt the strings we insert,
     // which needs the encryption key. Establish it from the password (which may be
     // empty for owner-only encryption). The password must be set after the file is
     // initialized, matching the encrypt/decrypt path.
     boolean_type encrypted = VANILLAPDF_RV_FALSE;
-    check(File_IsEncrypted(file.get(), &encrypted), "Failed to determine encryption state");
+    THROW_IF_NOT_SUCCESS(File_IsEncrypted(file, &encrypted), "Failed to determine encryption state");
     if (encrypted == VANILLAPDF_RV_TRUE) {
-        check(File_SetEncryptionPassword(file.get(), opts.password.c_str()),
-              "Failed to set password");
+        THROW_IF_NOT_SUCCESS(File_SetEncryptionPassword(file, options.password.c_str()), "Failed to set password");
     }
 
-    DictionaryObjectPtr info = get_or_create_info(file.get());
+    auto info_dictionary = get_or_create_info(file);
 
-    for (const auto& field : metadata_fields) {
-        const std::optional<std::string>& value = opts.*(field.member);
+    for (const auto& field : METADATA_FIELDS) {
+        const auto& value = options.*(field.member);
         if (value.has_value()) {
-            apply_field(info.get(), field.key, *value);
+            apply_field(info_dictionary, field.key, value.value());
         }
     }
 
     // Production fields are always stamped: a full save republishes the document,
     // so this tool is its producer and "now" is its modification time.
-    apply_field(info.get(), "Producer", "vanillapdf-cli " VANILLAPDF_CLI_VERSION);
-    apply_field(info.get(), "ModDate", current_pdf_date());
+    auto modification_date = current_pdf_date();
+    apply_field(info_dictionary, "Producer", "vanillapdf-cli " VANILLAPDF_CLI_VERSION);
+    apply_field(info_dictionary, "ModDate", modification_date);
 
-    check(Document_Save(document.get(), opts.output.c_str()), "Failed to save document");
-    std::cerr << "Output: " << opts.output << "\n";
+    THROW_IF_NOT_SUCCESS(Document_Save(document, options.output.c_str()), "Failed to save document");
+    std::cerr << "Output: " << options.output << "\n";
 
-    return 0;
+    return VANILLAPDF_CLI_ERROR_SUCCESS;
 }
 
-void register_metadata(CLI::App& app) {
-    auto* cmd = app.add_subcommand("metadata", "Read or write PDF document metadata");
-    cmd->require_subcommand(1);
+} // namespace
 
-    auto set_opts = std::make_shared<MetadataOptions>();
-    auto* set_cmd = cmd->add_subcommand("set", "Set document information fields");
-    set_cmd->add_option("input", set_opts->input, "Input PDF file")
+void register_metadata(CLI::App& app, int& exit_code) {
+    auto* command = app.add_subcommand("metadata", "Read or write PDF document metadata");
+    command->require_subcommand(1);
+
+    // metadata set
+    auto set_options = std::make_shared<MetadataOptions>();
+    auto* set_command = command->add_subcommand("set", "Set document information fields");
+
+    set_command->add_option("input", set_options->input, "Input PDF file")
         ->required()
         ->check(CLI::ExistingFile);
-    set_cmd->add_option("-o,--output", set_opts->output, "Output PDF file")
+    set_command->add_option("-o,--output", set_options->output, "Output PDF file")
         ->required();
-    set_cmd->add_option("-p,--password", set_opts->password,
-                        "Password for an encrypted input (required to re-encrypt on save)");
+    set_command->add_option("-p,--password", set_options->password,
+        "Password for an encrypted input (required to re-encrypt on save)");
 
-    for (const auto& field : metadata_fields) {
-        set_cmd->add_option(field.flag, set_opts.get()->*(field.member), field.description);
+    for (const auto& field : METADATA_FIELDS) {
+        auto& field_value = (*set_options).*(field.member);
+        set_command->add_option(field.flag, field_value, field.description);
     }
 
-    set_cmd->callback([set_opts]() {
-        try {
-            std::exit(run_metadata_set(*set_opts));
-        } catch (const pdf_error& e) {
-            report_error(e);
-            std::exit(1);
-        }
+    set_command->callback([set_options, &exit_code]() {
+        exit_code = process_metadata_set(*set_options);
     });
 }
 
-} // namespace vanillapdf::cli::commands
+} // cli
+} // vanillapdf
