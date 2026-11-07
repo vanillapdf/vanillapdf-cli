@@ -5,10 +5,11 @@
 #include <charconv>
 #include <cstddef>
 #include <stdexcept>
-#include <string>
 #include <string_view>
 #include <system_error>
 #include <vector>
+
+#include <fmt/format.h>
 
 namespace vanillapdf::cli {
 
@@ -40,13 +41,13 @@ inline std::size_t resolve_page(std::string_view token, std::string_view item, s
         const char* end = token.data() + token.size();
         const auto [ptr, ec] = std::from_chars(token.data(), end, page);
         if (token.empty() || ec != std::errc() || ptr != end) {
-            throw page_range_error("invalid page '" + std::string(item) + "'");
+            throw page_range_error(fmt::format("invalid page '{}'", item));
         }
     }
 
     if (page < 1 || page > total) {
-        throw page_range_error("page '" + std::string(token) + "' is out of range (document has "
-                               + std::to_string(total) + " pages)");
+        throw page_range_error(
+            fmt::format("page '{}' is out of range (document has {} pages)", token, total));
     }
     return page;
 }
@@ -107,7 +108,7 @@ inline std::vector<std::size_t> resolve_page_range(std::string_view spec, std::s
                                                               ? std::string_view::npos
                                                               : comma - start));
         if (item.empty()) {
-            throw page_range_error("empty entry in page range '" + std::string(spec) + "'");
+            throw page_range_error(fmt::format("empty entry in page range '{}'", spec));
         }
 
         if (item.front() == '!') {
