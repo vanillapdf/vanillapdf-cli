@@ -1,0 +1,80 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [ "main", "release/*" ]
+  pull_request:
+    branches: [ "main", "release/*" ]
+  schedule:
+    - cron: '15 22 * * 6'  # Every Saturday at 22:15 UTC
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      security-events: write  # upload the analysis results
+      contents: read          # actions/checkout
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: actions
+            build-mode: none
+          - language: c-cpp
+            build-mode: manual
+          - language: python
+            build-mode: none
+
+    # The C++ build goes next to the checkout rather than inside it: the bootstrapped
+    # vcpkg, the FetchContent copy of vanillapdf, and the installed dependency headers
+    # all live in the binary dir, and CodeQL reports alerts for any source inside the
+    # checkout. Building outside it keeps the results to this repository's own code.
+    env:
+      BUILD_DIR: ${{ github.workspace }}/../build
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install build tools
+        if: matrix.build-mode == 'manual'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends cmake ninja-build
+
+      - name: Cache vcpkg
+        if: matrix.build-mode == 'manual'
+        uses: actions/cache@v6
+        with:
+          path: |
+            ${{ env.BUILD_DIR }}/vcpkg
+            ${{ env.BUILD_DIR }}/vcpkg_installed
+          key: vcpkg-codeql-${{ hashFiles('vcpkg.json') }}
+          restore-keys: vcpkg-codeql-
+
+      # Configure before CodeQL starts tracing so dependency builds (vcpkg ports)
+      # are not extracted; only the compile step below is analysed.
+      - name: Configure
+        if: matrix.build-mode == 'manual'
+        run: cmake --preset ci -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release -DVANILLAPDF_CLI_ENABLE_TESTS=ON
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+
+      - name: Build
+        if: matrix.build-mode == 'manual'
+        run: cmake --build "$BUILD_DIR" --config Release
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:${{ matrix.language }}"
