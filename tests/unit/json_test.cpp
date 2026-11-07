@@ -1,4 +1,5 @@
 #include <string>
+#include <vector>
 
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
@@ -21,19 +22,10 @@ TEST(JsonEscapeExamples, EscapesQuoteBackslashAndControls) {
 }
 
 // Property: json_escape must produce a JSON string literal that a real parser
-// decodes back to the original input.
-class JsonEscape : public testing::TestWithParam<std::string> {};
-
-TEST_P(JsonEscape, RoundTripsThroughJsonParser) {
-    const std::string& input = GetParam();
-    const std::string escaped = json_escape(input);
-    const nlohmann::json parsed = nlohmann::json::parse(escaped);
-    EXPECT_EQ(parsed.get<std::string>(), input);
-}
-
-INSTANTIATE_TEST_SUITE_P(
-    Inputs, JsonEscape,
-    testing::Values(
+// decodes back to the original input. A loop rather than TEST_P: GCC on Rocky 10
+// arm64 crashes instantiating TEST_P for std::string.
+TEST(JsonEscape, RoundTripsThroughJsonParser) {
+    const std::vector<std::string> inputs = {
         std::string(""),
         std::string("Hello, world!"),
         std::string("digits 1234567890"),
@@ -41,4 +33,13 @@ INSTANTIATE_TEST_SUITE_P(
         std::string("quote \" backslash \\ mixed"),
         std::string("controls \b\f\n\r\t inline"),
         std::string("\x01\x1f", 2),
-        std::string("unicode caf\xc3\xa9")));  // valid UTF-8 ("café")
+        std::string("unicode caf\xc3\xa9"),  // valid UTF-8 ("café")
+    };
+
+    for (const auto& input : inputs) {
+        SCOPED_TRACE(input);
+        const std::string escaped = json_escape(input);
+        const nlohmann::json parsed = nlohmann::json::parse(escaped);
+        EXPECT_EQ(parsed.get<std::string>(), input);
+    }
+}

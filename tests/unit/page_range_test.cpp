@@ -1,6 +1,7 @@
 #include <cstddef>
 #include <set>
 #include <string>
+#include <vector>
 
 #include <gtest/gtest.h>
 
@@ -75,28 +76,29 @@ TEST(PageRange, OutOfRangePagesAreErrors) {
     EXPECT_THROW(resolve_page_range("last", 0), PageRangeException);
 }
 
-// Property: every malformed range is rejected with PageRangeException.
-class PageRangeMalformed : public testing::TestWithParam<std::string> {};
+// Property: every malformed range is rejected with PageRangeException. A loop rather
+// than TEST_P: GCC on Rocky 10 arm64 crashes instantiating TEST_P for std::string.
+TEST(PageRangeMalformed, Throws) {
+    const std::vector<std::string> ranges = {
+        "",
+        ",",
+        "1,",
+        "1,,2",
+        "-3",
+        "3-",
+        "1-2-3",
+        "!",
+        "!!1",
+        "+1",
+        "1.5",
+        "abc",
+        "First",
+        "odd-even",
+        "99999999999999999999999",
+    };
 
-TEST_P(PageRangeMalformed, Throws) {
-    EXPECT_THROW(resolve_page_range(GetParam(), 10), PageRangeException);
+    for (const auto& range : ranges) {
+        SCOPED_TRACE(range);
+        EXPECT_THROW(resolve_page_range(range, 10), PageRangeException);
+    }
 }
-
-INSTANTIATE_TEST_SUITE_P(
-    Ranges, PageRangeMalformed,
-    testing::Values(
-        std::string(""),
-        std::string(","),
-        std::string("1,"),
-        std::string("1,,2"),
-        std::string("-3"),
-        std::string("3-"),
-        std::string("1-2-3"),
-        std::string("!"),
-        std::string("!!1"),
-        std::string("+1"),
-        std::string("1.5"),
-        std::string("abc"),
-        std::string("First"),
-        std::string("odd-even"),
-        std::string("99999999999999999999999")));

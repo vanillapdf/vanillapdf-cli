@@ -338,7 +338,7 @@ void print_list_json(const std::string& file, const std::vector<SignatureListEnt
 bool read_signature_entry(FieldHandle* field, SignatureListEntry& entry) {
     try {
         SignatureFieldGuard signature_field;
-        THROW_IF_NOT_SUCCESS(Field_ToSignature(field, signature_field.out()), "Failed to convert to signature field");
+        THROW_IF_NOT_SUCCESS(SignatureField_FromField(field, signature_field.out()), "Failed to convert to signature field");
 
         DigitalSignatureGuard signature;
         error_type signature_result = SignatureField_GetValue(signature_field, signature.out());
@@ -562,7 +562,7 @@ std::vector<SignatureVerifyEntry> collect_verify_entries(const std::string& inpu
         }
 
         SignatureFieldGuard signature_field;
-        THROW_IF_NOT_SUCCESS(Field_ToSignature(field, signature_field.out()), "Failed to convert to signature field");
+        THROW_IF_NOT_SUCCESS(SignatureField_FromField(field, signature_field.out()), "Failed to convert to signature field");
 
         DigitalSignatureGuard signature;
         error_type signature_result = SignatureField_GetValue(signature_field, signature.out());
