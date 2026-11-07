@@ -119,6 +119,8 @@ jobs:
     # Linux builds run in the same containers as the vanillapdf NuGet packages, so
     # the binary needs no newer glibc than Rocky 9 has. Empty elsewhere, which runs
     # the job directly on the runner.
+    # name is the system the release is built on, so an old one stands out in the
+    # checks. platform is what users download, and names the archive.
     container: ${{ matrix.image }}
     timeout-minutes: 120
     permissions:
@@ -137,30 +139,36 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: linux-x64
+          - name: rocky.9-x64
+            platform: linux-x64
             os: ubuntu-24.04
             image: ghcr.io/vanillapdf/vanillapdf-rockylinux-amd64:9
             preset: ci
             cpack_gen: TGZ
-          - name: linux-arm64
+          - name: rocky.9-arm64
+            platform: linux-arm64
             os: ubuntu-24.04-arm
             image: ghcr.io/vanillapdf/vanillapdf-rockylinux-arm64v8:9
             preset: ci
             cpack_gen: TGZ
-          - name: windows-x64
+          - name: win.2022-x64-static
+            platform: windows-x64
             os: windows-2022
             preset: ci-windows-static
             cpack_gen: ZIP
-          - name: windows-arm64
+          - name: win.11-arm64-static
+            platform: windows-arm64
             os: windows-11-arm
             preset: ci-windows-arm64-static
             cpack_gen: ZIP
-          - name: macos-arm64
+          - name: osx.26-arm64
+            platform: macos-arm64
             os: macos-26
             preset: ci
             cpack_gen: TGZ
             macos_deployment_target: "14.0"
-          - name: macos-x64
+          - name: osx.26-x64
+            platform: macos-x64
             os: macos-26-intel
             preset: ci
             cpack_gen: TGZ
@@ -178,7 +186,7 @@ jobs:
           path: |
             build/vcpkg
             build/vcpkg_installed
-          key: vcpkg-release-${{ matrix.name }}-${{ hashFiles('vcpkg.json', 'cmake/vcpkg_init.cmake') }}
+          key: vcpkg-release-${{ matrix.platform }}-${{ hashFiles('vcpkg.json', 'cmake/vcpkg_init.cmake') }}
 
       - name: Configure
         run: >
@@ -198,7 +206,7 @@ jobs:
           cpack --config build/CPackConfig.cmake
           -G ${{ matrix.cpack_gen }}
           -C Release
-          -D CPACK_PACKAGE_FILE_NAME="vanillapdf-cli-${TAG}-${{ matrix.name }}"
+          -D CPACK_PACKAGE_FILE_NAME="vanillapdf-cli-${TAG}-${{ matrix.platform }}"
           -B "$PWD"
 
       - name: Verify the archive
@@ -213,7 +221,7 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@v7
         with:
-          name: release-${{ matrix.name }}
+          name: release-${{ matrix.platform }}
           path: |
             vanillapdf-cli-*.zip
             vanillapdf-cli-*.tar.gz
@@ -224,7 +232,7 @@ jobs:
       - name: Upload dependency manifests
         uses: actions/upload-artifact@v7
         with:
-          name: sbom-${{ matrix.name }}
+          name: sbom-${{ matrix.platform }}
           path: build/vcpkg_installed/*/share/*/vcpkg.spdx.json
           if-no-files-found: error
 
