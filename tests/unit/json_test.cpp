@@ -3,7 +3,7 @@
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
 
-#include "utils/json.hpp"
+#include "utils/json.h"
 
 using vanillapdf::cli::json_escape;
 

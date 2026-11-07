@@ -1,6 +1,6 @@
 # vanillapdf-cli
 
-**Command-line tool for PDF manipulation — merge, split, rotate, encrypt, sign, and more.**
+**The command-line toolkit for professional PDF processing, validation and digital signatures.**
 
 Built on [vanillapdf](https://vanillapdf.com), a cross-platform PDF library with a clean C API.
 
@@ -26,7 +26,7 @@ Built on [vanillapdf](https://vanillapdf.com), a cross-platform PDF library with
 ```sh
 vanillapdf-cli info report.pdf
 vanillapdf-cli merge a.pdf b.pdf c.pdf -o combined.pdf
-vanillapdf-cli split document.pdf -o extract.pdf -p 1 3 5
+vanillapdf-cli split document.pdf -o extract.pdf -p 1-3,last
 vanillapdf-cli rotate scanned.pdf -o fixed.pdf -a 90
 vanillapdf-cli encrypt add doc.pdf -o secured.pdf -p "secret"
 vanillapdf-cli sign add doc.pdf -o signed.pdf -k cert.p12

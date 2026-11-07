@@ -1,4 +1,6 @@
-# vanillapdf-cli — PDF manipulation from the command line
+# vanillapdf-cli
+
+**The command-line toolkit for professional PDF processing, validation and digital signatures.**
 
 <div align="center">
 
@@ -47,7 +49,7 @@ See [Building from source](https://vanillapdf-cli.readthedocs.io/building) for a
 | Inspect a PDF | `vanillapdf-cli info report.pdf` |
 | Tag metadata | `vanillapdf-cli metadata set report.pdf -o tagged.pdf --title "Q4 Report"` |
 | Merge files | `vanillapdf-cli merge a.pdf b.pdf c.pdf -o book.pdf` |
-| Split out pages | `vanillapdf-cli split report.pdf -o pages.pdf -p 2 4 6` |
+| Split out pages | `vanillapdf-cli split report.pdf -o pages.pdf -p 1-3,last` |
 | Encrypt (AES-256) | `vanillapdf-cli encrypt add report.pdf -o secured.pdf -p "my-password"` |
 | Sign with a certificate | `vanillapdf-cli sign add report.pdf -o signed.pdf -k cert.p12` |
 
@@ -61,7 +63,7 @@ Each command has a dedicated section with all options in the [command reference]
 | [`metadata set`](#metadata-set) | Write document information fields |
 | [`merge`](#merge) | Combine multiple PDFs into one |
 | [`split`](#split) | Extract pages into a new PDF |
-| [`pages`](#pages) | Delete, reorder, or insert pages |
+| [`pages`](#pages) | Delete or insert pages |
 | [`rotate`](#rotate) | Rotate pages by 90 / 180 / 270 degrees |
 | [`compress`](#compress) | Compress and optimise a PDF |
 | [`encrypt add`](#encrypt-add--remove) | Add password encryption (AES-256 default) |
@@ -81,7 +83,21 @@ Each command has a dedicated section with all options in the [command reference]
 --log-level LEVEL  Library log level: off critical error warning info debug trace
 ```
 
-Errors go to `stderr`; the process exits non-zero on failure. Input files are positional arguments; output files use `-o` / `--output`. Page numbers are 1-based.
+Errors go to `stderr`; the process exits non-zero on failure. Input files are positional arguments; output files use `-o` / `--output`.
+
+### Page ranges
+
+`split`, `rotate`, and `pages delete` select pages with `-p` / `--pages`, which takes one comma-separated page range. Pages are numbered from 1.
+
+| Entry | Meaning | Example (10 pages) |
+|---|---|---|
+| `N` | a single page | `3` → 3 |
+| `A-B` | pages A through B (`4-2` = `2-4`) | `2-4` → 2,3,4 |
+| `first` / `last` | first / last page (aliases `begin` / `end`) | `8-last` → 8,9,10 |
+| `odd` / `even` | every odd / even page | `even` → 2,4,6,8,10 |
+| `!entry` | exclude those pages | `1-5,!3` → 1,2,4,5 |
+
+The range selects a set of pages, always processed in document order. A range of only exclusions starts from all pages (`!first` = every page but the first). A page outside the document is an error. Quote ranges that contain `!` or spaces: `-p "!first,!last"`. See the [page range reference](https://vanillapdf-cli.readthedocs.io/commands/#page-ranges) for details.
 
 ---
 
@@ -167,14 +183,17 @@ vanillapdf-cli merge part1.pdf part2.pdf part3.pdf -o combined.pdf
 ### `split`
 
 ```
-vanillapdf-cli split <input> -o <output> [-p <pages>...]
+vanillapdf-cli split <input> -o <output> [-p <range>]
 ```
 
-Extracts the specified pages into a new PDF. Omit `-p` to copy all pages. Pages are 1-based; out-of-range values are skipped with a warning.
+Extracts the pages in the [page range](#page-ranges) into a new PDF, keeping their original order. Omit `-p` to copy all pages.
 
 ```sh
-# Extract pages 2, 4, and 6
-vanillapdf-cli split report.pdf -o even-pages.pdf -p 2 4 6
+# Extract pages 1-3 and the last page
+vanillapdf-cli split report.pdf -o summary.pdf -p 1-3,last
+
+# Every even page
+vanillapdf-cli split report.pdf -o even-pages.pdf -p even
 
 # Copy all pages (effectively a duplicate)
 vanillapdf-cli split report.pdf -o copy.pdf
@@ -185,19 +204,18 @@ vanillapdf-cli split report.pdf -o copy.pdf
 ### `pages`
 
 ```
-vanillapdf-cli pages delete  <input> -o <output> -p <pages>...
-vanillapdf-cli pages reorder <input> -o <output> --order <permutation>
-vanillapdf-cli pages insert  <input> -o <output> --from <other.pdf> [--at <n>]
+vanillapdf-cli pages delete <input> -o <output> -p <range>
+vanillapdf-cli pages insert <input> -o <output> --from <other.pdf> [--at <n>]
 ```
 
-Page-level editing that preserves the rest of the document. Page numbers are 1-based.
+Page-level editing that preserves the rest of the document. `delete` takes a [page range](#page-ranges).
 
 ```sh
 # Delete pages 2 and 5
-vanillapdf-cli pages delete report.pdf -o trimmed.pdf -p 2 5
+vanillapdf-cli pages delete report.pdf -o trimmed.pdf -p 2,5
 
-# Reorder a 3-page document (must be a full permutation)
-vanillapdf-cli pages reorder report.pdf -o reordered.pdf --order 3,1,2
+# Drop the cover page
+vanillapdf-cli pages delete report.pdf -o no-cover.pdf -p first
 
 # Insert cover.pdf before page 1 (omit --at to append at the end)
 vanillapdf-cli pages insert report.pdf -o with-cover.pdf --from cover.pdf --at 1
@@ -208,10 +226,10 @@ vanillapdf-cli pages insert report.pdf -o with-cover.pdf --from cover.pdf --at 1
 ### `rotate`
 
 ```
-vanillapdf-cli rotate <input> -o <output> -a <angle> [-p <pages>...]
+vanillapdf-cli rotate <input> -o <output> -a <angle> [-p <range>]
 ```
 
-Rotates pages by `90`, `180`, or `270` degrees. The rotation is cumulative with any existing page rotation. Omit `-p` to rotate all pages.
+Rotates pages clockwise by `90`, `180`, or `270` degrees. The rotation is cumulative with any existing page rotation. `-p` takes a [page range](#page-ranges); omit it to rotate all pages.
 
 ```sh
 # Rotate all pages 90 degrees clockwise
@@ -219,6 +237,9 @@ vanillapdf-cli rotate scanned.pdf -o fixed.pdf -a 90
 
 # Flip only page 3 upside-down
 vanillapdf-cli rotate document.pdf -o flipped.pdf -a 180 -p 3
+
+# Duplex scan with every back side upside-down
+vanillapdf-cli rotate duplex.pdf -o fixed.pdf -a 180 -p even
 ```
 
 ---

@@ -29,21 +29,24 @@ Dependencies: `vanillapdf` (libvanillapdf) and `CLI11`, resolved via `find_packa
 
 C++17 CLI tool built on the [vanillapdf](https://github.com/vanillapdf/vanillapdf) C API (`vanillapdf/c_vanillapdf_api.h`) and [CLI11](https://github.com/CLIUtils/CLI11) for argument parsing. Binary output name is `vanillapdf-cli`.
 
-**Command pattern**: Each command lives in `src/commands/<name>.cpp` and exposes a `register_<name>(CLI::App&)` function (declared in `commands.hpp`). Registration creates a CLI11 subcommand with options and a callback. `main.cpp` calls all register functions.
+**Command pattern** (same as `vanillapdf.tools` in the library repo): each command lives in `src/commands/<name>.cpp` and exposes `register_<name>(CLI::App& app, int& exit_code)`, declared in `commands/commands.h`. Registration creates a CLI11 subcommand bound to a `<Name>Options` struct; the callback runs `process_<name>(options)` and stores its result in `exit_code`, which `main` returns. Everything except the register function sits in an anonymous namespace. Commands throw on failure; `main` catches `PdfException` / `PageRangeException` once and reports them.
 
 **Shared utilities** (`src/utils/`, all in namespace `vanillapdf::cli`):
-- `error.hpp` — `check(error_type, context)` (throws `pdf_error` on non-success codes), `last_error_message()`, `report_error(pdf_error)` (prints to stderr; appends vanillapdf's last error under `-v`), and the `g_verbose` flag.
-- `handles.hpp` — `Handle<T, ReleaseFn>` RAII wrapper for vanillapdf C API opaque handles (use `.get()`, `.put()` for out-params, `.release()`), plus type aliases: `DocumentPtr`, `CatalogPtr`, `PageTreePtr`, `PageObjectPtr`, `FilePtr`, `BufferPtr`, `DocumentInfoPtr`, `PKCS12KeyPtr`, `SigningKeyPtr`, `StringObjectPtr`, `FileStructureValidationResultPtr`, `FileStructureIssuePtr`, and others.
-- `encoding.hpp` — `to_string_utf8(StringObjectHandle*)` decodes a PDF text string (PDFDocEncoding / UTF-16BE / UTF-8) to UTF-8 via `TextStringEncoding_Detect`.
-- `json.hpp` — `json_escape(string_view)` escapes a string as a JSON string literal (built with fmt).
+- `error.h` — `THROW_IF_NOT_SUCCESS(call, context)` (throws `PdfException`, recording the failed call, file and line), `PdfException`, `last_error_message()`, `report_error()` (prints to stderr; under `-v` adds the library's last error message and the failed call), and the `g_verbose` flag.
+- `handle_guard.h` — `HandleGuard<Handle, ReleaseFn>` RAII wrapper for C API handles, copied from `vanillapdf.tools`: pass `guard.out()` to Create/Get functions and the guard itself where a handle is expected (implicit conversion). Aliases: `DocumentGuard`, `CatalogGuard`, `PageTreeGuard`, `FileGuard`, `BufferGuard`, and others.
+- `encoding.h` — `to_string_utf8(StringObjectHandle*)` decodes a PDF text string (PDFDocEncoding / UTF-16BE / UTF-8) to UTF-8 via `TextStringEncoding_Detect`.
+- `json.h` — `json_escape(string_view)` escapes a string as a JSON string literal (built with fmt).
+- `page_range.h` — `resolve_page_range(range, page_count)` parses `-p` / `--pages` into a set of 1-based pages; throws `PageRangeException`.
 
 Dependencies (`vanillapdf`, `CLI11`, `fmt`) come via `find_package`; `fmt` is used directly by the CLI. GoogleTest backs the unit tests and is only pulled in when `VANILLAPDF_CLI_ENABLE_TESTS=ON` (off by default; on in the dev/CI presets).
 
 ## Conventions
 
+The code follows the vanillapdf coding style; see `.claude/rules/coding-style.md`. In short:
+
 - C++17, no extensions (`CMAKE_CXX_EXTENSIONS OFF`)
-- Use `#ifndef`/`#define` include guards, not `#pragma once`
-- Guard naming: `VANILLAPDF_CLI_<PATH>_<FILE>_HPP` (e.g., `VANILLAPDF_CLI_UTILS_ERROR_HPP`)
+- `.h` / `.cpp` files; declarations in the header, definitions in the source file (templates excepted)
+- `#ifndef` include guards named `_VANILLAPDF_CLI_<FILE>_H`, closed with `#endif /* _VANILLAPDF_CLI_<FILE>_H */`, not `#pragma once`
 - Packaging target: deb/rpm via CPack, dependencies come from system packages (not vendored)
 
 ## Branching

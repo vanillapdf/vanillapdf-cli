@@ -1,88 +1,87 @@
+#include "commands/commands.h"
+#include "utils/error.h"
+#include "utils/handle_guard.h"
+#include "utils/page_range.h"
+
 #include <CLI/CLI.hpp>
+
 #include <iostream>
 #include <memory>
 #include <set>
 #include <string>
-#include <vector>
 
-#include "commands/commands.hpp"
-#include "utils/handles.hpp"
+namespace vanillapdf {
+namespace cli {
 
-namespace vanillapdf::cli::commands {
+namespace {
 
 struct SplitOptions {
     std::string input;
     std::string output;
-    std::vector<int> pages;
+    std::string pages;
 };
 
-static int run_split(const SplitOptions& opts) {
-    DocumentPtr document;
-    check(Document_Open(opts.input.c_str(), document.put()), "Failed to open document");
+int process_split(const SplitOptions& options) {
+    DocumentGuard document;
+    THROW_IF_NOT_SUCCESS(Document_Open(options.input.c_str(), document.out()), "Failed to open document");
 
-    CatalogPtr catalog;
-    check(Document_GetCatalog(document.get(), catalog.put()), "Failed to get catalog");
+    CatalogGuard catalog;
+    THROW_IF_NOT_SUCCESS(Document_GetCatalog(document, catalog.out()), "Failed to get catalog");
 
-    PageTreePtr pages;
-    check(Catalog_GetPages(catalog.get(), pages.put()), "Failed to get page tree");
+    PageTreeGuard page_tree;
+    THROW_IF_NOT_SUCCESS(Catalog_GetPages(catalog, page_tree.out()), "Failed to get page tree");
 
-    size_type total_pages = 0;
-    check(PageTree_GetPageCount(pages.get(), &total_pages), "Failed to get page count");
+    size_type page_count = 0;
+    THROW_IF_NOT_SUCCESS(PageTree_GetPageCount(page_tree, &page_count), "Failed to get page count");
 
-    // The 1-based pages to keep. Omitting -p keeps everything (a plain copy).
-    std::set<size_type> keep;
-    if (opts.pages.empty()) {
-        for (size_type i = 1; i <= total_pages; ++i) {
-            keep.insert(i);
+    // The 1-based pages to keep, in document order. Omitting -p keeps everything
+    // (a plain copy).
+    std::set<std::size_t> kept_pages;
+    if (options.pages.empty()) {
+        for (std::size_t page_number = 1; page_number <= page_count; page_number++) {
+            kept_pages.insert(page_number);
         }
     } else {
-        for (int page_num : opts.pages) {
-            if (page_num < 1 || static_cast<size_type>(page_num) > total_pages) {
-                std::cerr << "Warning: page " << page_num << " out of range (1-" << total_pages << "), skipping\n";
-                continue;
-            }
-            keep.insert(static_cast<size_type>(page_num));
-        }
+        kept_pages = resolve_page_range(options.pages, page_count);
     }
 
-    if (keep.empty()) {
-        throw pdf_error(VANILLAPDF_ERROR_PARAMETER_VALUE, "No pages to extract");
+    if (kept_pages.empty()) {
+        throw PdfException(VANILLAPDF_ERROR_PARAMETER_VALUE, "No pages to extract");
     }
 
     // Extract by removing the pages we are not keeping (highest first so earlier
     // indices stay valid). Editing in place keeps the rest of the document and
     // avoids the blank page that Document_Create would seed.
-    for (size_type i = total_pages; i > 0; --i) {
-        if (keep.find(i) == keep.end()) {
-            check(PageTree_RemovePage(pages.get(), i), "Failed to remove page");
+    for (size_type page_number = page_count; page_number > 0; page_number--) {
+        if (kept_pages.count(page_number) == 0) {
+            THROW_IF_NOT_SUCCESS(PageTree_RemovePage(page_tree, page_number), "Failed to remove page");
         }
     }
 
-    check(Document_Save(document.get(), opts.output.c_str()), "Failed to save output");
-    std::cerr << "Split to: " << opts.output << " (" << keep.size() << " pages)\n";
+    THROW_IF_NOT_SUCCESS(Document_Save(document, options.output.c_str()), "Failed to save output");
+    std::cerr << "Split to: " << options.output << " (" << kept_pages.size() << " pages)\n";
 
-    return 0;
+    return VANILLAPDF_CLI_ERROR_SUCCESS;
 }
 
-void register_split(CLI::App& app) {
-    auto opts = std::make_shared<SplitOptions>();
+} // namespace
 
-    auto* cmd = app.add_subcommand("split", "Split pages from a PDF document");
-    cmd->add_option("input", opts->input, "Input PDF file")
+void register_split(CLI::App& app, int& exit_code) {
+    auto options = std::make_shared<SplitOptions>();
+    auto* command = app.add_subcommand("split", "Split pages from a PDF document");
+
+    command->add_option("input", options->input, "Input PDF file")
         ->required()
         ->check(CLI::ExistingFile);
-    cmd->add_option("-o,--output", opts->output, "Output PDF file")
+    command->add_option("-o,--output", options->output, "Output PDF file")
         ->required();
-    cmd->add_option("-p,--pages", opts->pages, "Page numbers to extract (1-based, default: all)");
+    command->add_option("-p,--pages", options->pages,
+        "Pages to extract, e.g. 1-3,7,last or odd,!1 (default: all); kept in document order");
 
-    cmd->callback([opts]() {
-        try {
-            std::exit(run_split(*opts));
-        } catch (const pdf_error& e) {
-            report_error(e);
-            std::exit(1);
-        }
+    command->callback([options, &exit_code]() {
+        exit_code = process_split(*options);
     });
 }
 
-} // namespace vanillapdf::cli::commands
+} // cli
+} // vanillapdf

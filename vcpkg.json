@@ -1,6 +1,6 @@
 {
     "name": "vanillapdf-cli",
-    "description": "PDF manipulation command-line tool",
+    "description": "Command-line toolkit for PDF processing, validation and digital signatures",
     "features": {
         "cli11": {
             "description": "CLI argument parsing library",

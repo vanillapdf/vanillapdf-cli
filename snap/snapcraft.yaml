@@ -2,9 +2,10 @@ name: vanillapdf-cli
 base: core24
 adopt-info: vanillapdf-cli
 
-summary: PDF manipulation command-line tool
+summary: Command-line toolkit for PDF processing, validation and digital signatures
 description: |
-  Command-line tool for PDF operations: merge, split, rotate, compress,
+  The command-line toolkit for professional PDF processing, validation and digital signatures:
+  merge, split, rotate, compress, validate,
   encrypt, and sign PDF files.
 
   To process files on removable media, connect the removable-media plug:

@@ -1,46 +1,49 @@
+#include "commands/commands.h"
+#include "utils/error.h"
+#include "utils/handle_guard.h"
+
 #include <CLI/CLI.hpp>
+
 #include <iostream>
 #include <memory>
 #include <string>
 
-#include "commands/commands.hpp"
-#include "utils/handles.hpp"
+namespace vanillapdf {
+namespace cli {
 
-namespace vanillapdf::cli::commands {
+namespace {
 
 struct CompressOptions {
     std::string input;
     std::string output;
 };
 
-static int run_compress(const CompressOptions& opts) {
-    DocumentPtr document;
-    check(Document_Open(opts.input.c_str(), document.put()), "Failed to open document");
+int process_compress(const CompressOptions& options) {
+    DocumentGuard document;
+    THROW_IF_NOT_SUCCESS(Document_Open(options.input.c_str(), document.out()), "Failed to open document");
 
-    check(Document_Save(document.get(), opts.output.c_str()), "Failed to save compressed document");
-    std::cerr << "Compressed: " << opts.output << "\n";
+    THROW_IF_NOT_SUCCESS(Document_Save(document, options.output.c_str()), "Failed to save compressed document");
+    std::cerr << "Compressed: " << options.output << "\n";
 
-    return 0;
+    return VANILLAPDF_CLI_ERROR_SUCCESS;
 }
 
-void register_compress(CLI::App& app) {
-    auto opts = std::make_shared<CompressOptions>();
+} // namespace
 
-    auto* cmd = app.add_subcommand("compress", "Compress and optimize a PDF document");
-    cmd->add_option("input", opts->input, "Input PDF file")
+void register_compress(CLI::App& app, int& exit_code) {
+    auto options = std::make_shared<CompressOptions>();
+    auto* command = app.add_subcommand("compress", "Compress and optimize a PDF document");
+
+    command->add_option("input", options->input, "Input PDF file")
         ->required()
         ->check(CLI::ExistingFile);
-    cmd->add_option("-o,--output", opts->output, "Output PDF file")
+    command->add_option("-o,--output", options->output, "Output PDF file")
         ->required();
 
-    cmd->callback([opts]() {
-        try {
-            std::exit(run_compress(*opts));
-        } catch (const pdf_error& e) {
-            report_error(e);
-            std::exit(1);
-        }
+    command->callback([options, &exit_code]() {
+        exit_code = process_compress(*options);
     });
 }
 
-} // namespace vanillapdf::cli::commands
+} // cli
+} // vanillapdf
