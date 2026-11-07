@@ -9,7 +9,7 @@
 | [`pages`](pages.md) | Delete or insert pages |
 | [`rotate`](rotate.md) | Rotate pages by 90 / 180 / 270 degrees |
 | [`compress`](compress.md) | Compress and optimise a PDF |
-| [`encrypt add`](encrypt.md#add) | Add password encryption (AES 128-bit) |
+| [`encrypt add`](encrypt.md#add) | Add password encryption (AES-256 by default) |
 | [`encrypt remove`](encrypt.md#remove) | Remove encryption |
 | [`sign add`](sign.md#add) | Apply a digital signature (PKCS#12) |
 | [`sign list`](sign.md#list) | List signatures in a PDF |
@@ -31,8 +31,7 @@ comma-separated entries.
 | Entry | Selects | Example (10-page document) |
 |---|---|---|
 | `N` | Page *N* | `3` → 3 |
-| `A-B` | Pages *A* through *B*, inclusive | `2-4` → 2, 3, 4 |
-| `B-A` | The same pages in reverse order | `4-2` → 4, 3, 2 |
+| `A-B` | Pages *A* through *B*, inclusive (`4-2` is the same as `2-4`) | `2-4` → 2, 3, 4 |
 | `first`, `last` | The first / last page; usable anywhere a number is | `8-last` → 8, 9, 10 |
 | `begin`, `end` | Aliases for `first` and `last` | `begin-3` → 1, 2, 3 |
 | `odd`, `even` | Every odd / even page | `even` → 2, 4, 6, 8, 10 |
@@ -40,7 +39,9 @@ comma-separated entries.
 
 Combining entries:
 
-- Entries are combined in the order written: `1-3,7,last` → 1, 2, 3, 7, 10.
+- A range selects a *set* of pages: `1-3,7,last` → 1, 2, 3, 7, 10. The order
+  of entries and repeated pages do not matter — `last,1-3,2` selects the same
+  pages, and every command processes them in document order.
 - Exclusions apply after everything else, wherever they appear: `!3,1-5` is the
   same as `1-5,!3`.
 - A range made only of exclusions starts from every page: `!1` → all pages

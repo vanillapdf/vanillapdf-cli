@@ -88,12 +88,12 @@ Errors go to `stderr`; the process exits non-zero on failure. Input files are po
 | Entry | Meaning | Example (10 pages) |
 |---|---|---|
 | `N` | a single page | `3` → 3 |
-| `A-B` | pages A through B; reversed when A > B | `2-4` → 2,3,4 · `4-2` → 4,3,2 |
+| `A-B` | pages A through B (`4-2` = `2-4`) | `2-4` → 2,3,4 |
 | `first` / `last` | first / last page (aliases `begin` / `end`) | `8-last` → 8,9,10 |
 | `odd` / `even` | every odd / even page | `even` → 2,4,6,8,10 |
 | `!entry` | exclude those pages | `1-5,!3` → 1,2,4,5 |
 
-A range of only exclusions starts from all pages (`!first` = every page but the first). A page outside the document is an error. Quote ranges that contain `!` or spaces: `-p "!first,!last"`. See the [page range reference](https://vanillapdf-cli.readthedocs.io/commands/#page-ranges) for details.
+The range selects a set of pages, always processed in document order. A range of only exclusions starts from all pages (`!first` = every page but the first). A page outside the document is an error. Quote ranges that contain `!` or spaces: `-p "!first,!last"`. See the [page range reference](https://vanillapdf-cli.readthedocs.io/commands/#page-ranges) for details.
 
 ---
 
