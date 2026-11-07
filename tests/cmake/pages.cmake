@@ -2,7 +2,6 @@
 
 add_test(NAME cli_pages_help COMMAND vanillapdf-cli pages --help)
 add_test(NAME cli_pages_delete_help COMMAND vanillapdf-cli pages delete --help)
-add_test(NAME cli_pages_reorder_help COMMAND vanillapdf-cli pages reorder --help)
 add_test(NAME cli_pages_insert_help COMMAND vanillapdf-cli pages insert --help)
 
 add_test(NAME cli_pages_no_subcommand COMMAND vanillapdf-cli pages)
@@ -43,22 +42,6 @@ add_test(NAME cli_pages_delete_out_of_range
     COMMAND vanillapdf-cli pages delete "${CLI_FIXTURES}/three_pages.pdf"
             -o "${CMAKE_BINARY_DIR}/test_pages_deloor.pdf" -p 4)
 set_tests_properties(cli_pages_delete_out_of_range PROPERTIES WILL_FAIL TRUE)
-
-# reorder: full permutation preserves the page count
-add_test(NAME cli_pages_reorder
-    COMMAND vanillapdf-cli pages reorder "${CLI_FIXTURES}/three_pages.pdf"
-            -o "${CMAKE_BINARY_DIR}/test_pages_reo.pdf" --order 3,1,2)
-set_tests_properties(cli_pages_reorder PROPERTIES FIXTURES_SETUP PAGES_REO)
-add_test(NAME cli_pages_reorder_count
-    COMMAND vanillapdf-cli info "${CMAKE_BINARY_DIR}/test_pages_reo.pdf")
-set_tests_properties(cli_pages_reorder_count PROPERTIES
-    FIXTURES_REQUIRED PAGES_REO PASS_REGULAR_EXPRESSION "Pages: 3")
-
-# reorder with a non-permutation must fail
-add_test(NAME cli_pages_reorder_invalid
-    COMMAND vanillapdf-cli pages reorder "${CLI_FIXTURES}/three_pages.pdf"
-            -o "${CMAKE_BINARY_DIR}/test_pages_reobad.pdf" --order 1,2)
-set_tests_properties(cli_pages_reorder_invalid PROPERTIES WILL_FAIL TRUE)
 
 # insert: 3 pages + 1 inserted page -> 4 pages
 add_test(NAME cli_pages_insert

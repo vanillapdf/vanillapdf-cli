@@ -1,6 +1,6 @@
 # pages
 
-Page-level editing: delete, reorder, or insert pages. Unlike `split` (which
+Page-level editing: delete or insert pages. Unlike `split` (which
 extracts pages into a fresh document), `pages` edits the document in place and
 preserves the rest of its structure. All page numbers are **1-based**.
 
@@ -32,29 +32,6 @@ vanillapdf-cli pages delete report.pdf -o no-cover.pdf -p first
 
 # Keep only page 3 (delete everything else)
 vanillapdf-cli pages delete report.pdf -o page3.pdf -p "!3"
-```
-
----
-
-## reorder {#reorder}
-
-Reorder the pages of a document.
-
-```
-vanillapdf-cli pages reorder <input> -o <output> --order <permutation>
-```
-
-| Argument | Required | Description |
-|---|---|---|
-| `input` | Yes | Source PDF file |
-| `-o`, `--output` | Yes | Output PDF file |
-| `--order` | Yes | Comma-separated new order — a permutation of all pages |
-
-`--order` must list every page exactly once (e.g. `3,1,2` for a 3-page
-document); anything else is rejected.
-
-```sh
-vanillapdf-cli pages reorder report.pdf -o reordered.pdf --order 3,1,2
 ```
 
 ---

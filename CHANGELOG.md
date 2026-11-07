@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `1-3,7`, reversed `5-2`, `first` / `last` (aliases `begin` / `end`),
   `odd` / `even`, and `!` exclusions. A page outside the document is an error.
 - `split` — extract selected pages into a new PDF.
-- `pages` — page-level editing: `delete`, `reorder`, and `insert` pages,
+- `pages` — page-level editing: `delete` and `insert` pages,
   preserving the rest of the document.
 - `rotate` — rotate pages by 90 / 180 / 270 degrees, cumulative with existing
   rotation.
