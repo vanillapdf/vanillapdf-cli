@@ -6,7 +6,7 @@ preserves the rest of its structure. All page numbers are **1-based**.
 
 ---
 
-## delete {#delete}
+## delete
 
 Delete one or more pages.
 
@@ -36,7 +36,7 @@ vanillapdf-cli pages delete report.pdf -o page3.pdf -p "!3"
 
 ---
 
-## insert {#insert}
+## insert
 
 Insert the pages of another PDF into this one.
 

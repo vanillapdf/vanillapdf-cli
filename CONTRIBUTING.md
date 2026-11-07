@@ -49,7 +49,13 @@ New commands follow the established pattern: each lives in
 `src/commands/<name>.cpp` and exposes a `register_<name>(CLI::App&, int&)`
 function declared in `commands/commands.h` and called from `main.cpp`. Please add tests under
 `tests/` for new behaviour, and update the docs (`README.md`, `docs/commands/`,
-and `mkdocs.yml`) alongside the code.
+and the table of contents in `docs/index.md`) alongside the code. Preview the
+docs locally with:
+
+```sh
+pip install -r docs/requirements.txt
+sphinx-build -W -b html docs docs/_build/html
+```
 
 ---
 

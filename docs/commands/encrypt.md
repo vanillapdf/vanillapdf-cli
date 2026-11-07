@@ -4,7 +4,7 @@ Add or remove password encryption on a PDF.
 
 ---
 
-## add {#add}
+## add
 
 Encrypt a PDF with a user password (required to open) and an optional owner password (required to edit).
 
@@ -49,13 +49,14 @@ vanillapdf-cli encrypt add report.pdf -o report-restricted.pdf \
     -p "open123" --allow print,copy
 ```
 
-!!! note
-    Encryption uses AES-256 by default. RC4 is supported for compatibility with
-    legacy readers but is insecure and should be avoided.
+```{note}
+Encryption uses AES-256 by default. RC4 is supported for compatibility with
+legacy readers but is insecure and should be avoided.
+```
 
 ---
 
-## remove {#remove}
+## remove
 
 Remove encryption from a password-protected PDF.
 
