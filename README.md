@@ -12,7 +12,7 @@
 
 </div>
 
-**vanillapdf-cli** inspects, edits, encrypts, signs and validates PDF documents from the command line on Linux, macOS and Windows. It is the command-line front end of the [vanillapdf](https://github.com/vanillapdf/vanillapdf) library, so it handles PDFs exactly the way applications built on the library do. Release archives are self-contained: download, extract and run.
+**vanillapdf-cli** inspects, edits, encrypts, signs and validates PDF documents from the command line on Linux, macOS and Windows. It puts the [vanillapdf](https://github.com/vanillapdf/vanillapdf) library in your shell and scripts: the same parser, encryption and signing engine, with no code to write. Each release is a single binary with the library linked in, so there is nothing else to install: download, extract and run.
 
 - 📄 **Inspect & transform** — read and write metadata, merge, split, rotate, delete and insert pages, compress
 - 🔒 **Encrypt & decrypt** — AES-256 (or 128/RC4) with permissions and passwords
