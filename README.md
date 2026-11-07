@@ -12,7 +12,7 @@
 
 </div>
 
-**vanillapdf-cli** is a fast, cross-platform command-line tool for inspecting and transforming PDF documents. It's built on [vanillapdf](https://github.com/vanillapdf/vanillapdf), a modern C++17 PDF library with a clean, ABI-stable C API — so every operation runs through the same battle-tested engine, with no runtime dependencies to install.
+**vanillapdf-cli** inspects, edits, encrypts, signs and validates PDF documents from the command line on Linux, macOS and Windows. It is the command-line front end of the [vanillapdf](https://github.com/vanillapdf/vanillapdf) library, so it handles PDFs exactly the way applications built on the library do. Release archives are self-contained: download, extract and run.
 
 - 📄 **Inspect & transform** — read and write metadata, merge, split, rotate, delete and insert pages, compress
 - 🔒 **Encrypt & decrypt** — AES-256 (or 128/RC4) with permissions and passwords
