@@ -42,7 +42,7 @@ ctest --test-dir build --output-on-failure          # Linux / macOS
 ctest --test-dir build -C Debug --output-on-failure  # Windows
 ```
 
-See [Building from source](https://vanillapdf-cli.readthedocs.io/building) for
+See [Building from source](https://vanillapdf.readthedocs.io/projects/cli/en/latest/building/) for
 all configurations (system packages, existing vcpkg, static builds).
 
 New commands follow the established pattern: each lives in

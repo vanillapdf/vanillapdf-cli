@@ -18,5 +18,5 @@ chmod +x examples/*.sh
 ./examples/merge-directory.sh ./chapters merged.pdf
 ```
 
-See the [command reference](https://vanillapdf-cli.readthedocs.io/commands/) for
+See the [command reference](https://vanillapdf.readthedocs.io/projects/cli/en/latest/commands/) for
 the full set of options.
