@@ -31,15 +31,13 @@ static int run_split(const SplitOptions& opts) {
 
     // The 1-based pages to keep, in document order. Omitting -p keeps everything
     // (a plain copy).
-    std::set<size_type> keep;
+    std::set<std::size_t> keep;
     if (opts.pages.empty()) {
-        for (size_type i = 1; i <= total_pages; ++i) {
-            keep.insert(i);
+        for (std::size_t page_number = 1; page_number <= total_pages; page_number += 1) {
+            keep.insert(page_number);
         }
     } else {
-        for (std::size_t page_num : resolve_page_range(opts.pages, total_pages)) {
-            keep.insert(static_cast<size_type>(page_num));
-        }
+        keep = resolve_page_range(opts.pages, total_pages);
     }
 
     if (keep.empty()) {

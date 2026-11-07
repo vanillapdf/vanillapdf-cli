@@ -42,10 +42,7 @@ static int run_pages_delete(const PagesDeleteOptions& opts) {
     check(PageTree_GetPageCount(pages.get(), &total), "Failed to get page count");
 
     // Page indices in the PageTree API are 1-based.
-    std::set<size_type> to_remove;
-    for (std::size_t page_num : resolve_page_range(opts.pages, total)) {
-        to_remove.insert(static_cast<size_type>(page_num));
-    }
+    auto to_remove = resolve_page_range(opts.pages, total);
 
     if (to_remove.empty()) {
         throw pdf_error(VANILLAPDF_ERROR_PARAMETER_VALUE, "No valid pages to delete");
@@ -56,7 +53,7 @@ static int run_pages_delete(const PagesDeleteOptions& opts) {
 
     // Remove from the highest page number down so earlier ones stay valid.
     for (auto it = to_remove.rbegin(); it != to_remove.rend(); ++it) {
-        check(PageTree_RemovePage(pages.get(), *it), "Failed to remove page");
+        check(PageTree_RemovePage(pages.get(), static_cast<size_type>(*it)), "Failed to remove page");
     }
 
     check(Document_Save(document.get(), opts.output.c_str()), "Failed to save output");

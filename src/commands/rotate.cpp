@@ -78,8 +78,7 @@ static int run_rotate(const RotateOptions& opts) {
         std::cerr << "Rotated all " << total_pages << " pages by " << opts.angle << " degrees\n";
     } else {
         // A set, so a page listed twice (e.g. "1-3,2") is still rotated once.
-        const auto selected = resolve_page_range(opts.pages, total_pages);
-        const std::set<std::size_t> to_rotate(selected.begin(), selected.end());
+        auto to_rotate = resolve_page_range(opts.pages, total_pages);
         for (std::size_t page_num : to_rotate) {
             rotate_page(page_tree.get(), static_cast<size_type>(page_num), opts.angle);
         }
