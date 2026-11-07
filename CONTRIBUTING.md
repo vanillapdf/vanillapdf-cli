@@ -96,18 +96,15 @@ See [developercertificate.org](https://developercertificate.org) for details.
 
 ---
 
-## 🔐 Release Tag Signing
+## 🔐 Verifying a Release
 
-Release tags are GPG-signed by a maintainer so users can verify a release is
-authentic and untampered:
+Release archives are built by the release workflow and carry build provenance
+and SBOM attestations, so users can verify that an archive is authentic and
+untampered:
 
 ```sh
-git tag -v v0.1.0   # verify a signed tag
+gh attestation verify vanillapdf-cli-<version>-<platform>.zip   --repo vanillapdf/vanillapdf-cli
 ```
-
-Maintainer public keys are available on the
-[GitHub organization profile](https://github.com/vanillapdf) and via public
-keyservers.
 
 ---
 

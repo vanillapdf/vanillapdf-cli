@@ -24,7 +24,8 @@ on:
       - 'vcpkg.json'
 
 permissions:
-  contents: read
+  contents: read    # Download the repository source code
+  packages: read    # Needed to load container images
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -32,17 +33,21 @@ concurrency:
 
 jobs:
   build:
-    name: ${{ matrix.name }}
+    name: ${{ matrix.name }} - ${{ matrix.config }}
     runs-on: ${{ matrix.os }}
+    # Empty on Windows, which runs the job directly on the runner.
+    container: ${{ matrix.image }}
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
         include:
-          - name: linux-release
-            os: ubuntu-latest
+          - name: ubuntu.26.04-x64
+            os: ubuntu-24.04
+            image: ghcr.io/vanillapdf/vanillapdf-ubuntu:26.04
             preset: ci
             config: Release
-          - name: windows-release
+          - name: win.2025-x64-static
             os: windows-2025
             preset: ci-windows-static
             config: Release
@@ -50,17 +55,14 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Install build tools (Linux)
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends cmake ninja-build
-
+      # Relative paths: github.workspace is the host path, not the path in a container.
       - name: Cache vcpkg
         uses: actions/cache@v6
         with:
           path: |
-            ${{ github.workspace }}/build/vcpkg
-            ${{ github.workspace }}/build/vcpkg_installed
-          key: vcpkg-${{ matrix.preset }}-${{ hashFiles('vcpkg.json') }}
+            build/vcpkg
+            build/vcpkg_installed
+          key: vcpkg-${{ matrix.preset }}-${{ hashFiles('vcpkg.json', 'cmake/vcpkg_init.cmake') }}
           restore-keys: vcpkg-${{ matrix.preset }}-
 
       - name: Configure

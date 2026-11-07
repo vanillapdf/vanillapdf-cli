@@ -21,7 +21,7 @@ jobs:
           path: |
             ${{ github.workspace }}/build/vcpkg
             ${{ github.workspace }}/build/vcpkg_installed
-          key: vcpkg-ubuntu-${{ hashFiles('vcpkg.json') }}
+          key: vcpkg-ubuntu-${{ hashFiles('vcpkg.json', 'cmake/vcpkg_init.cmake') }}
           restore-keys: vcpkg-ubuntu-
 
       - name: Configure

@@ -232,7 +232,14 @@ void register_metadata(CLI::App& app) {
                         "Password for an encrypted input (required to re-encrypt on save)");
 
     for (const auto& field : metadata_fields) {
-        set_cmd->add_option(field.flag, set_opts.get()->*(field.member), field.description);
+        // Through a callback, not bound to the std::optional: CLI11 turns an empty
+        // value for a wrapper type into a default-constructed one, which would leave
+        // the field untouched instead of removing it.
+        auto member = field.member;
+        set_cmd->add_option_function<std::string>(
+            field.flag,
+            [set_opts, member](const std::string& value) { (*set_opts).*member = value; },
+            field.description);
     }
 
     set_cmd->callback([set_opts]() {

@@ -68,6 +68,19 @@
             }
         },
         {
+            "name": "ci-windows-arm64-static",
+            "inherits": "ci-windows-static",
+            "displayName": "CI Windows ARM64 static (/MT, auto-vcpkg, pinned vanillapdf tag)",
+            "description": "Like 'ci-windows-static' for Windows on ARM.",
+            "architecture": {
+                "value": "ARM64",
+                "strategy": "set"
+            },
+            "cacheVariables": {
+                "VCPKG_TARGET_TRIPLET": "arm64-windows-static"
+            }
+        },
+        {
             "name": "snap",
             "displayName": "Snap package (Ubuntu 24.04 system packages)",
             "description": "System packages for CLI11 and vanillapdf dependencies. vanillapdf built from source at the pinned tag in cmake/vanillapdf.cmake.",

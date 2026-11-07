@@ -1,0 +1,75 @@
+name: Update vcpkg
+
+on:
+  # Run weekly on Monday at 6:00 UTC
+  schedule:
+    - cron: '0 6 * * 1'
+
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Show what would be done without making changes'
+        required: false
+        default: true
+        type: boolean
+      force:
+        description: 'Force update even if already on latest version'
+        required: false
+        default: false
+        type: boolean
+      no-pr:
+        description: 'Skip pull request creation'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read  # checkout only; bot token will do writes
+  pull-requests: read
+
+jobs:
+  update-vcpkg:
+    name: Check and update vcpkg
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      # BOT_TOKEN, not GITHUB_TOKEN: a pull request opened with GITHUB_TOKEN does
+      # not trigger workflows, so the update would arrive without any CI.
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          token: ${{ secrets.BOT_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "vanillapdf-bot"
+          git config --global user.email "info@vanillapdf.com"
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.14'
+
+      - name: Run vcpkg update script
+        env:
+          GH_TOKEN: ${{ secrets.BOT_TOKEN }}
+          DRY_RUN: ${{ inputs.dry-run }}
+          FORCE: ${{ inputs.force }}
+          NO_PR: ${{ inputs.no-pr }}
+        run: |
+          FLAGS=""
+          if [[ "$DRY_RUN" == "true" ]]; then
+            FLAGS="$FLAGS --dry-run"
+          fi
+          if [[ "$FORCE" == "true" ]]; then
+            FLAGS="$FLAGS --force"
+          fi
+          if [[ "$NO_PR" == "true" ]]; then
+            FLAGS="$FLAGS --no-pr"
+          fi
+
+          python scripts/update_vcpkg.py \
+            --vcpkg-repository https://github.com/microsoft/vcpkg.git \
+            --pin-file cmake/vcpkg_init.cmake \
+            $FLAGS

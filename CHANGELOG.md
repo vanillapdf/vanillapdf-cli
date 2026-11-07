@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Release archives contain only the CLI: the binary, `LICENSE`, `NOTICE.md`, and
+  `README.md`, without the vanillapdf library, headers, or CMake config.
+- Linux archives are built on Rocky 9 and run on glibc 2.34 or newer.
+- Dependencies updated to vcpkg 2026.10.16, including OpenSSL 3.6.5.
+- Release SBOMs list the libraries linked into the binaries.
+
+### Fixed
+
+- `metadata set` with an empty value, such as `--title ""`, removes the field
+  again. With CLI11 2.7 it silently left the field unchanged.
+
 ## [0.1.0] - 2026-07-07
 
 ### Added
@@ -42,8 +55,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Global flags: `--version`, `--copyright`, `-v` / `--verbose`, and
   `--log-level`.
 - Distribution: prebuilt archives from a tag-driven release workflow — Linux
-  x64 and Windows x64, plus macOS x64 and arm64 — with build-provenance and
-  SBOM attestation. A Homebrew formula template and Debian/RPM CPack
+  x64 and arm64, Windows x64 and arm64, and macOS x64 and arm64 — with
+  build-provenance and SBOM attestation. A Homebrew formula template and Debian/RPM CPack
   configuration are included as scaffolding for future package-manager channels.
 
 ### Not yet supported

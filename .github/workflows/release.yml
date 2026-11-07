@@ -7,48 +7,153 @@ on:
         description: "Tag to create and release (e.g. v0.1.0). Must not exist yet."
         required: true
       dry_run:
-        description: "Build and package only; do not create the tag or the release."
+        description: "Build, test and package only; do not create the tag or the release."
         type: boolean
         default: true
-  # Any PR that touches this workflow triggers a build-and-package-only run so a
-  # broken release pipeline is caught before it is merged. The publish job below
-  # is gated to workflow_dispatch, so a PR can never create a tag or a release.
+  # Any PR that touches the release pipeline itself gets a build-and-package-only run,
+  # so a broken pipeline is caught before it is merged. The full matrix is too heavy
+  # for ordinary PRs, which sanity-check covers. The publish jobs below are gated on
+  # dry_run, which prepare forces on for pull requests, so a PR can never create a tag
+  # or a release.
   pull_request:
     paths:
       - ".github/workflows/release.yml"
+      - "scripts/generate_sbom.py"
+      - "scripts/verify_package.sh"
 
 permissions: {}
 
-env:
-  # workflow_dispatch supplies the real tag; pull_request runs have no input, so
-  # fall back to a placeholder that only affects the package file names.
-  TAG: ${{ github.event.inputs.tag || 'dry-run' }}
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  build:
-    name: ${{ matrix.name }}
-    runs-on: ${{ matrix.os }}
-    # The top-level permissions are {}; grant just enough for actions/checkout to
-    # read the repository (required on private repos, harmless on public ones).
+  prepare:
+    name: Validate tag and version
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
+    outputs:
+      tag: ${{ steps.parse.outputs.tag }}
+      version: ${{ steps.parse.outputs.version }}
+      prerelease: ${{ steps.parse.outputs.prerelease }}
+      is_latest: ${{ steps.parse.outputs.is_latest }}
+      dry_run: ${{ steps.parse.outputs.dry_run }}
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Parse and validate
+        id: parse
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+
+          # CMakeLists.txt is the source of truth for the version the binary reports.
+          VERSION=$(sed -n '/^project(vanillapdf-cli/,/^)/s/^ *VERSION *\([0-9.]*\) *$/\1/p' CMakeLists.txt)
+          if [ -z "$VERSION" ]; then
+            echo "::error::Could not read the project version from CMakeLists.txt"
+            exit 1
+          fi
+
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            TAG="v$VERSION"
+            DRY_RUN=true
+          else
+            TAG="$INPUT_TAG"
+            DRY_RUN="$INPUT_DRY_RUN"
+          fi
+
+          if ! [[ "$TAG" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)(-(alpha|beta|rc)\.[0-9]+)?$ ]]; then
+            echo "::error::Tag '$TAG' is not vX.Y.Z or vX.Y.Z-(alpha|beta|rc).N"
+            exit 1
+          fi
+
+          TAG_VERSION="${BASH_REMATCH[1]}"
+          if [ "$TAG_VERSION" != "$VERSION" ]; then
+            echo "::error::Tag '$TAG' does not match version $VERSION in CMakeLists.txt"
+            exit 1
+          fi
+
+          if [ "$DRY_RUN" = "false" ]; then
+            if ! [[ "$GITHUB_REF" =~ ^refs/heads/(main|release/.+)$ ]]; then
+              echo "::error::Releases are cut from main or release/*, not $GITHUB_REF"
+              exit 1
+            fi
+            if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+              echo "::error::Tag $TAG already exists"
+              exit 1
+            fi
+          fi
+
+          PRERELEASE=false
+          IS_LATEST=false
+          if [[ "$TAG" == *-* ]]; then
+            PRERELEASE=true
+          else
+            # This tag does not exist yet, so compare it with the stable tags that do:
+            # a patch on an older release line must not take over the "latest" flag.
+            HIGHEST=$( { git tag -l 'v*.*.*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' || true; echo "$TAG"; } | sort -V | tail -1)
+            if [ "$HIGHEST" = "$TAG" ]; then
+              IS_LATEST=true
+            fi
+          fi
+
+          {
+            echo "tag=$TAG"
+            echo "version=$VERSION"
+            echo "prerelease=$PRERELEASE"
+            echo "is_latest=$IS_LATEST"
+            echo "dry_run=$DRY_RUN"
+          } >> "$GITHUB_OUTPUT"
+
+  build:
+    name: ${{ matrix.name }}
+    needs: prepare
+    runs-on: ${{ matrix.os }}
+    # Linux builds run in the same containers as the vanillapdf NuGet packages, so
+    # the binary needs no newer glibc than Rocky 9 has. Empty elsewhere, which runs
+    # the job directly on the runner.
+    container: ${{ matrix.image }}
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      packages: read  # pull the private ghcr.io images
     # Build against the newest SDK but pin the runtime floor: MACOSX_DEPLOYMENT_TARGET
     # is honoured by clang/ld, seeds CMAKE_OSX_DEPLOYMENT_TARGET, and is passed to the
     # vcpkg port builds, so the CLI, the library, and all deps target the same minimum.
     # Empty on non-Apple runners, where it is ignored.
     env:
       MACOSX_DEPLOYMENT_TARGET: ${{ matrix.macos_deployment_target }}
+      VCPKG_DISABLE_METRICS: 1
+      TAG: ${{ needs.prepare.outputs.tag }}
+      VERSION: ${{ needs.prepare.outputs.version }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - name: linux-x64
-            os: ubuntu-latest
+            os: ubuntu-24.04
+            image: ghcr.io/vanillapdf/vanillapdf-rockylinux-amd64:9
+            preset: ci
+            cpack_gen: TGZ
+          - name: linux-arm64
+            os: ubuntu-24.04-arm
+            image: ghcr.io/vanillapdf/vanillapdf-rockylinux-arm64v8:9
             preset: ci
             cpack_gen: TGZ
           - name: windows-x64
-            os: windows-2025
+            os: windows-2022
             preset: ci-windows-static
+            cpack_gen: ZIP
+          - name: windows-arm64
+            os: windows-11-arm
+            preset: ci-windows-arm64-static
             cpack_gen: ZIP
           - name: macos-arm64
             os: macos-26
@@ -64,28 +169,28 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Install build tools (Linux)
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends cmake ninja-build
-
+      # Exact key only: a partial match would build a release on a dependency tree
+      # left over from another vcpkg pin. The paths stay relative because
+      # github.workspace is the host path, not the path inside a container.
       - name: Cache vcpkg
         uses: actions/cache@v6
         with:
           path: |
-            ${{ github.workspace }}/build/vcpkg
-            ${{ github.workspace }}/build/vcpkg_installed
-          key: vcpkg-release-${{ matrix.name }}-${{ hashFiles('vcpkg.json') }}
-          restore-keys: vcpkg-release-${{ matrix.name }}-
+            build/vcpkg
+            build/vcpkg_installed
+          key: vcpkg-release-${{ matrix.name }}-${{ hashFiles('vcpkg.json', 'cmake/vcpkg_init.cmake') }}
 
       - name: Configure
         run: >
           cmake --preset ${{ matrix.preset }}
           -DCMAKE_BUILD_TYPE=Release
           -DBUILD_SHARED_LIBS=OFF
-          -DVANILLAPDF_CLI_ENABLE_TESTS=OFF
 
       - name: Build
         run: cmake --build build --config Release
+
+      - name: Test
+        run: ctest --test-dir build -C Release --output-on-failure
 
       - name: Package archive
         shell: bash
@@ -95,6 +200,15 @@ jobs:
           -C Release
           -D CPACK_PACKAGE_FILE_NAME="vanillapdf-cli-${TAG}-${{ matrix.name }}"
           -B "$PWD"
+
+      - name: Verify the archive
+        shell: bash
+        run: |
+          for archive in vanillapdf-cli-*.zip vanillapdf-cli-*.tar.gz; do
+            if [ -f "$archive" ]; then
+              bash scripts/verify_package.sh "$archive" "$VERSION" tests/fixtures/minimal.pdf
+            fi
+          done
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v7
@@ -106,82 +220,185 @@ jobs:
             vanillapdf-cli-*.sha256
           if-no-files-found: error
 
-  release:
-    name: Tag and create draft release
-    needs: build
-    # Publish only on a manual dispatch with dry_run disabled. Pull-request runs
-    # (which touch this workflow) and dry runs stop after the build job, which
-    # still uploads the archives as workflow artifacts for inspection.
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run != 'true'
-    runs-on: ubuntu-latest
+      # One document per dependency, written by vcpkg for what it actually built.
+      - name: Upload dependency manifests
+        uses: actions/upload-artifact@v7
+        with:
+          name: sbom-${{ matrix.name }}
+          path: build/vcpkg_installed/*/share/*/vcpkg.spdx.json
+          if-no-files-found: error
+
+  # A build on Rocky 9 says little about the distros users have. Start the archive on
+  # each supported system, including the oldest glibc we claim to support.
+  portability:
+    name: ${{ matrix.image }} (${{ matrix.arch }})
+    needs: [prepare, build]
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    container: ${{ matrix.image }}
+    timeout-minutes: 15
     permissions:
-      contents: write       # push the tag, create the release and upload assets
-      id-token: write       # keyless signing for provenance
-      attestations: write   # artifact attestations
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x64, arm64]
+        image:
+          - ubuntu:22.04
+          - debian:12
+          - rockylinux/rockylinux:9
+          - fedora:latest
 
     steps:
       - uses: actions/checkout@v7
+
+      - name: Download archive
+        uses: actions/download-artifact@v8
         with:
-          fetch-depth: 0
+          name: release-linux-${{ matrix.arch }}
+          path: dist
 
-      - name: Create and push tag
+      - name: Install tar
+        run: command -v tar >/dev/null || dnf install -y tar gzip
+
+      - name: Verify the archive
+        shell: bash
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: bash scripts/verify_package.sh dist/vanillapdf-cli-*.tar.gz "$VERSION" tests/fixtures/minimal.pdf
+
+  # Create the GitHub release as a *draft*. The tag is deliberately not created here:
+  # publishing the draft, after the production gate, is what creates it. The "Protected
+  # release tags" ruleset forbids deleting a tag, so everything that can fail has to
+  # happen first. Until the publish job runs, a failed release leaves only a draft,
+  # which can be deleted or picked up by a re-run.
+  draft:
+    name: Create draft release
+    needs: [prepare, build, portability]
+    if: needs.prepare.outputs.dry_run == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write       # create the release and upload assets
+      id-token: write       # keyless signing for provenance
+      attestations: write   # artifact attestations
+    outputs:
+      release_id: ${{ steps.create.outputs.release_id }}
+    env:
+      TAG: ${{ needs.prepare.outputs.tag }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Create draft release
+        id: create
+        env:
+          PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
+          IS_LATEST: ${{ needs.prepare.outputs.is_latest }}
         run: |
-          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
-            echo "::error::Tag $TAG already exists"
-            exit 1
-          fi
-          git config user.name "vanillapdf-bot"
-          git config user.email "info@vanillapdf.com"
-          git tag "$TAG"
-          git push origin "$TAG"
+          set -euo pipefail
 
-      - name: Download build artifacts
+          # Reuse the draft from an earlier attempt rather than creating a second one.
+          RELEASE_ID=$(gh api "repos/$GITHUB_REPOSITORY/releases" \
+            --jq ".[] | select(.draft and .tag_name == \"$TAG\") | .id" | head -n 1)
+
+          if [ -z "$RELEASE_ID" ]; then
+            # Through the REST API, not `gh release create`, because the POST response
+            # carries the id. Reading it back from the list endpoint is a race. The tag
+            # must not exist yet: publishing creates it at target_commitish.
+            RELEASE_ID=$(gh api --method POST "repos/$GITHUB_REPOSITORY/releases" \
+              -f tag_name="$TAG" \
+              -f name="vanillapdf-cli $TAG" \
+              -f target_commitish="$GITHUB_SHA" \
+              -F draft=true \
+              -F prerelease="$PRERELEASE" \
+              -F generate_release_notes=true \
+              -f make_latest="$IS_LATEST" \
+              --jq .id)
+          fi
+
+          echo "release_id=$RELEASE_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Download archives
         uses: actions/download-artifact@v8
         with:
           path: dist
+          pattern: release-*
           merge-multiple: true
 
-      - name: Create draft release from tag
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Tags containing a hyphen (e.g. v1.0.0-beta.1) are pre-releases.
-          PRERELEASE=""
-          [[ "$TAG" == *-* ]] && PRERELEASE="--prerelease"
-          gh release create "$TAG" \
-            --title "vanillapdf-cli $TAG" \
-            --generate-notes \
-            --draft \
-            $PRERELEASE
+      - name: Download dependency manifests
+        uses: actions/download-artifact@v8
+        with:
+          path: sbom-input
+          pattern: sbom-*
 
-      - name: Upload assets
+      - name: Generate SBOM
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "$TAG" dist/* --clobber
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          VANILLAPDF_TAG=$(sed -n 's/^set(VANILLAPDF_GIT_TAG "\(.*\)" CACHE.*/\1/p' cmake/vanillapdf.cmake)
+          python3 scripts/generate_sbom.py sbom-input \
+            --version "$VERSION" \
+            --vanillapdf-tag "$VANILLAPDF_TAG" \
+            --repository "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+            --vcpkg-manifest vcpkg.json \
+            --output "vanillapdf-cli-${TAG}-sbom.spdx.json"
 
       - name: Attest build provenance
+        id: attest-provenance
         uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
             dist/*.zip
             dist/*.tar.gz
 
-      - name: Generate SBOM
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh api "repos/${{ github.repository }}/dependency-graph/sbom" \
-            | jq '.sbom' > "vanillapdf-cli-${TAG}-sbom.spdx.json"
-
-      - name: Upload SBOM to release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "$TAG" "vanillapdf-cli-${TAG}-sbom.spdx.json" --clobber
-
       - name: Attest SBOM
-        uses: actions/attest-sbom@v4
+        uses: actions/attest@v4
         with:
           subject-path: |
             dist/*.zip
             dist/*.tar.gz
           sbom-path: vanillapdf-cli-${{ env.TAG }}-sbom.spdx.json
+
+      - name: Upload assets
+        env:
+          BUNDLE_PATH: ${{ steps.attest-provenance.outputs.bundle-path }}
+        run: |
+          # The bundle also lives in GitHub's attestation store, but OpenSSF Scorecard
+          # only credits a *.intoto.jsonl provenance file among the release assets.
+          cp "$BUNDLE_PATH" "vanillapdf-cli-${TAG}.intoto.jsonl"
+          gh release upload "$TAG" dist/* \
+            "vanillapdf-cli-${TAG}-sbom.spdx.json" \
+            "vanillapdf-cli-${TAG}.intoto.jsonl" \
+            --clobber
+
+      - name: Verify attestations
+        run: |
+          for archive in dist/*.zip dist/*.tar.gz; do
+            gh attestation verify "$archive" --repo "$GITHUB_REPOSITORY"
+          done
+
+  # The production environment pauses here for approval, which is the moment to review
+  # and edit the draft. Approving flips it to published, which creates the tag. The draft
+  # is addressed by id, because the tag is not a ref yet, and tag_name is re-asserted
+  # because a UI edit of the body can reset it.
+  publish:
+    name: Publish release
+    needs: [prepare, draft]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    permissions:
+      contents: write
+    steps:
+      - name: Publish draft release
+        env:
+          RELEASE_ID: ${{ needs.draft.outputs.release_id }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+          IS_LATEST: ${{ needs.prepare.outputs.is_latest }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID" \
+            -f tag_name="$TAG" \
+            -F draft=false \
+            -f make_latest="$IS_LATEST"

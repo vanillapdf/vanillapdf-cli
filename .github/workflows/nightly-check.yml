@@ -1,0 +1,140 @@
+name: Nightly full scan
+
+# The same operating systems and architectures as nightly-check.yml in the
+# vanillapdf repository, against the pinned vanillapdf tag. Rows there that exist to
+# exercise library build options (mimalloc, the CRT debug heap, no legacy provider)
+# are left out, and so is 32-bit Windows, which is being dropped. Windows is static
+# only: a shared build cannot find the OpenSSL legacy provider at runtime and fails
+# crypto operations.
+
+on:
+  workflow_dispatch:
+
+  # Run only when there was a change in the workflow file
+  push:
+    branches: [ "main", "release/*" ]
+    paths:
+      - '.github/workflows/nightly-check.yml'
+
+  pull_request:
+    branches: [ "main", "release/*" ]
+    paths:
+      - '.github/workflows/nightly-check.yml'
+
+  schedule:
+    - cron: '0 2 * * 1'  # Every Monday at 2 AM UTC
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Enable only minimum required permissions
+permissions:
+  contents: read    # Download the repository source code
+  packages: read    # Needed to load container images
+
+env:
+  VCPKG_DISABLE_METRICS: 1
+
+# No vcpkg caching: every row has its own compiler and so its own ABI hash, and
+# caching them all separately would exceed the cache budget.
+jobs:
+
+  linux:
+    name: ${{ matrix.config.name }} - ${{ matrix.build_type }}
+    runs-on: ${{ matrix.config.os }}
+    timeout-minutes: 120
+
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        build_type: [Debug, Release]
+
+        config:
+          - { name: ubuntu.22.04-x64, os: ubuntu-24.04, image: "ghcr.io/vanillapdf/vanillapdf-ubuntu-amd64:22.04" }
+          - { name: ubuntu.24.04-x64, os: ubuntu-24.04, image: "ghcr.io/vanillapdf/vanillapdf-ubuntu-amd64:24.04" }
+          - { name: ubuntu.24.04-arm64, os: ubuntu-24.04-arm, image: "ghcr.io/vanillapdf/vanillapdf-ubuntu-arm64v8:24.04" }
+          - { name: ubuntu.26.04-x64, os: ubuntu-24.04, image: "ghcr.io/vanillapdf/vanillapdf-ubuntu:26.04" }
+          - { name: ubuntu.26.04-arm64, os: ubuntu-24.04-arm, image: "ghcr.io/vanillapdf/vanillapdf-ubuntu:26.04" }
+          - { name: rocky.8-x64, os: ubuntu-24.04, image: "ghcr.io/vanillapdf/vanillapdf-rockylinux-amd64:8" }
+          - { name: rocky.8-arm64, os: ubuntu-24.04-arm, image: "ghcr.io/vanillapdf/vanillapdf-rockylinux-arm64v8:8" }
+          - { name: rocky.9-x64, os: ubuntu-24.04, image: "ghcr.io/vanillapdf/vanillapdf-rockylinux-amd64:9" }
+          - { name: rocky.9-arm64, os: ubuntu-24.04-arm, image: "ghcr.io/vanillapdf/vanillapdf-rockylinux-arm64v8:9" }
+          - { name: rocky.10-x64, os: ubuntu-24.04, image: "ghcr.io/vanillapdf/vanillapdf-rockylinux:10" }
+          - { name: rocky.10-arm64, os: ubuntu-24.04-arm, image: "ghcr.io/vanillapdf/vanillapdf-rockylinux:10" }
+          - { name: fedora.43-x64, os: ubuntu-24.04, image: "ghcr.io/vanillapdf/vanillapdf-fedora:43" }
+          - { name: fedora.43-arm64, os: ubuntu-24.04-arm, image: "ghcr.io/vanillapdf/vanillapdf-fedora:43" }
+          - { name: fedora.44-x64, os: ubuntu-24.04, image: "ghcr.io/vanillapdf/vanillapdf-fedora:44" }
+          - { name: fedora.44-arm64, os: ubuntu-24.04-arm, image: "ghcr.io/vanillapdf/vanillapdf-fedora:44" }
+
+    container: ${{ matrix.config.image }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Configure
+        run: cmake --preset ci -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+
+  windows:
+    name: ${{ matrix.config.name }} - Release
+    runs-on: ${{ matrix.config.os }}
+    timeout-minutes: 120
+
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        config:
+          - { name: win.2022-x64-static, os: windows-2022, preset: ci-windows-static }
+          - { name: win.2025-x64-static, os: windows-2025, preset: ci-windows-static }
+          - { name: win.11-arm64-static, os: windows-11-arm, preset: ci-windows-arm64-static }
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Configure
+        run: cmake --preset ${{ matrix.config.preset }} -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Test
+        run: ctest --test-dir build -C Release --output-on-failure
+
+
+  macos:
+    name: ${{ matrix.config.name }} - ${{ matrix.build_type }}
+    runs-on: ${{ matrix.config.runner }}
+    timeout-minutes: 120
+
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        build_type: [Debug, Release]
+
+        config:
+          - { name: osx.15-x64, runner: macos-15-intel }
+          - { name: osx.15-arm64, runner: macos-15 }
+          - { name: osx.26-x64, runner: macos-26-intel }
+          - { name: osx.26-arm64, runner: macos-26 }
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Configure
+        run: cmake --preset ci -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+
+      - name: Build
+        run: cmake --build build --config ${{ matrix.build_type }}
+
+      - name: Test
+        run: ctest --test-dir build -C ${{ matrix.build_type }} --output-on-failure

@@ -22,6 +22,8 @@
 
 Prebuilt archives for Linux and macOS (`.tar.gz`) and Windows (`.zip`) are attached to every [GitHub release](https://github.com/vanillapdf/vanillapdf-cli/releases). Download, extract, and run `vanillapdf-cli`.
 
+Archives are self-contained and available for Linux x64 and ARM64 (glibc 2.34 or newer: Ubuntu 22.04+, Debian 12+, RHEL/Rocky 9+), Windows x64 and ARM64, and macOS 14+ on x64 and ARM64.
+
 ### Build from source
 
 ```sh
