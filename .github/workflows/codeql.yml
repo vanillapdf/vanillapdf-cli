@@ -48,13 +48,14 @@ jobs:
         if: matrix.build-mode == 'manual'
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends cmake ninja-build
 
+      # Cache vcpkg's binary package archives (the vanillapdf model) rather than the
+      # build dir: actions/cache rejects BUILD_DIR because its path contains '..',
+      # so the build-dir cache was never saved and every run rebuilt all ports.
       - name: Cache vcpkg
         if: matrix.build-mode == 'manual'
         uses: actions/cache@v6
         with:
-          path: |
-            ${{ env.BUILD_DIR }}/vcpkg
-            ${{ env.BUILD_DIR }}/vcpkg_installed
+          path: ~/.cache/vcpkg/archives
           key: vcpkg-codeql-${{ hashFiles('vcpkg.json', 'cmake/vcpkg_init.cmake') }}
           restore-keys: vcpkg-codeql-
 
@@ -63,6 +64,13 @@ jobs:
       - name: Configure
         if: matrix.build-mode == 'manual'
         run: cmake --preset ci -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release -DVANILLAPDF_CLI_ENABLE_TESTS=ON
+
+      # vanillapdf comes in through FetchContent and is not this repository's code;
+      # its alerts are discarded anyway. Compile it before tracing starts so the
+      # traced build below covers only the CLI and its tests.
+      - name: Build vanillapdf
+        if: matrix.build-mode == 'manual'
+        run: cmake --build "$BUILD_DIR" --config Release --target vanillapdf
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
