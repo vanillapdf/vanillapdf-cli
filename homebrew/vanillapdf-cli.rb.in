@@ -1,5 +1,5 @@
 class VanillapdfCli < Formula
-  desc "PDF manipulation command-line tool"
+  desc "Command-line toolkit for PDF processing, validation and digital signatures"
   homepage "https://vanillapdf.com"
   url "https://github.com/vanillapdf/vanillapdf-cli/archive/refs/tags/@VANILLAPDF_CLI_RELEASE_TAG@.tar.gz"
   sha256 "@VANILLAPDF_CLI_SHA256@"

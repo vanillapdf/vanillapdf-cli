@@ -26,7 +26,7 @@ include(cmake/vcpkg_init.cmake)
 
 project(vanillapdf-cli
     VERSION 0.1.0
-    DESCRIPTION "PDF manipulation command-line tool"
+    DESCRIPTION "Command-line toolkit for PDF processing, validation and digital signatures"
     HOMEPAGE_URL "https://github.com/vanillapdf/vanillapdf-cli"
     LANGUAGES CXX
 )
