@@ -21,11 +21,28 @@ add_test(NAME cli_pages_delete_count
 set_tests_properties(cli_pages_delete_count PROPERTIES
     FIXTURES_REQUIRED PAGES_DEL PASS_REGULAR_EXPRESSION "Pages: 2")
 
-# deleting every page must fail
+# deleting every page must fail (matched on the message so a parse error can't pass it)
 add_test(NAME cli_pages_delete_all
     COMMAND vanillapdf-cli pages delete "${CLI_FIXTURES}/three_pages.pdf"
-            -o "${CMAKE_BINARY_DIR}/test_pages_delall.pdf" -p 1 2 3)
-set_tests_properties(cli_pages_delete_all PROPERTIES WILL_FAIL TRUE)
+            -o "${CMAKE_BINARY_DIR}/test_pages_delall.pdf" -p first-last)
+set_tests_properties(cli_pages_delete_all PROPERTIES
+    PASS_REGULAR_EXPRESSION "Cannot delete all pages")
+
+# delete with an exclusion: "!2" deletes every page except page 2 -> 1 page
+add_test(NAME cli_pages_delete_except
+    COMMAND vanillapdf-cli pages delete "${CLI_FIXTURES}/three_pages.pdf"
+            -o "${CMAKE_BINARY_DIR}/test_pages_delexc.pdf" -p "!2")
+set_tests_properties(cli_pages_delete_except PROPERTIES FIXTURES_SETUP PAGES_DELEXC)
+add_test(NAME cli_pages_delete_except_count
+    COMMAND vanillapdf-cli info "${CMAKE_BINARY_DIR}/test_pages_delexc.pdf")
+set_tests_properties(cli_pages_delete_except_count PROPERTIES
+    FIXTURES_REQUIRED PAGES_DELEXC PASS_REGULAR_EXPRESSION "Pages: 1")
+
+# a page past the end is an error, not a silent skip
+add_test(NAME cli_pages_delete_out_of_range
+    COMMAND vanillapdf-cli pages delete "${CLI_FIXTURES}/three_pages.pdf"
+            -o "${CMAKE_BINARY_DIR}/test_pages_deloor.pdf" -p 4)
+set_tests_properties(cli_pages_delete_out_of_range PROPERTIES WILL_FAIL TRUE)
 
 # reorder: full permutation preserves the page count
 add_test(NAME cli_pages_reorder

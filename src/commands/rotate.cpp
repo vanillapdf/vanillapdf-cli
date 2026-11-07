@@ -1,11 +1,12 @@
 #include <CLI/CLI.hpp>
 #include <iostream>
 #include <memory>
+#include <set>
 #include <string>
-#include <vector>
 
 #include "commands/commands.hpp"
 #include "utils/handles.hpp"
+#include "utils/page_range.hpp"
 
 namespace vanillapdf::cli::commands {
 
@@ -13,7 +14,7 @@ struct RotateOptions {
     std::string input;
     std::string output;
     int angle = 0;
-    std::vector<int> pages;
+    std::string pages;
 };
 
 static void rotate_page(PageTreeHandle* page_tree, size_type page_idx, int angle) {
@@ -76,14 +77,13 @@ static int run_rotate(const RotateOptions& opts) {
         }
         std::cerr << "Rotated all " << total_pages << " pages by " << opts.angle << " degrees\n";
     } else {
-        for (int page_num : opts.pages) {
-            if (page_num < 1 || static_cast<size_type>(page_num) > total_pages) {
-                std::cerr << "Warning: page " << page_num << " out of range (1-" << total_pages << "), skipping\n";
-                continue;
-            }
+        // A set, so a page listed twice (e.g. "1-3,2") is still rotated once.
+        const auto selected = resolve_page_range(opts.pages, total_pages);
+        const std::set<std::size_t> to_rotate(selected.begin(), selected.end());
+        for (std::size_t page_num : to_rotate) {
             rotate_page(page_tree.get(), static_cast<size_type>(page_num), opts.angle);
         }
-        std::cerr << "Rotated " << opts.pages.size() << " pages by " << opts.angle << " degrees\n";
+        std::cerr << "Rotated " << to_rotate.size() << " pages by " << opts.angle << " degrees\n";
     }
 
     check(Document_Save(document.get(), opts.output.c_str()), "Failed to save document");
@@ -104,12 +104,16 @@ void register_rotate(CLI::App& app) {
     cmd->add_option("-a,--angle", opts->angle, "Rotation angle (90, 180, 270)")
         ->required()
         ->check(CLI::IsMember({90, 180, 270}));
-    cmd->add_option("-p,--pages", opts->pages, "Page numbers to rotate (1-based, default: all)");
+    cmd->add_option("-p,--pages", opts->pages,
+                    "Pages to rotate, e.g. 1-3,7,last or even (default: all)");
 
     cmd->callback([opts]() {
         try {
             std::exit(run_rotate(*opts));
         } catch (const pdf_error& e) {
+            report_error(e);
+            std::exit(1);
+        } catch (const page_range_error& e) {
             report_error(e);
             std::exit(1);
         }

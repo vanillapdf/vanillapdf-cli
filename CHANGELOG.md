@@ -19,7 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   dictionary is created when absent. `Producer` and `ModDate` are always
   stamped, and encrypted documents can be edited with `-p` / `--password`.
 - `merge` — combine multiple PDFs into a single document.
-- `split` — extract selected pages (1-based) into a new PDF.
+- Page ranges for `-p` / `--pages` in `split`, `rotate`, and `pages delete`:
+  `1-3,7`, reversed `5-2`, `first` / `last` (aliases `begin` / `end`),
+  `odd` / `even`, and `!` exclusions. A page outside the document is an error.
+- `split` — extract selected pages into a new PDF.
 - `pages` — page-level editing: `delete`, `reorder`, and `insert` pages,
   preserving the rest of the document.
 - `rotate` — rotate pages by 90 / 180 / 270 degrees, cumulative with existing

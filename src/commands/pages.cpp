@@ -8,13 +8,14 @@
 
 #include "commands/commands.hpp"
 #include "utils/handles.hpp"
+#include "utils/page_range.hpp"
 
 namespace vanillapdf::cli::commands {
 
 struct PagesDeleteOptions {
     std::string input;
     std::string output;
-    std::vector<int> pages;
+    std::string pages;
 };
 
 struct PagesReorderOptions {
@@ -50,12 +51,7 @@ static int run_pages_delete(const PagesDeleteOptions& opts) {
 
     // Page indices in the PageTree API are 1-based.
     std::set<size_type> to_remove;
-    for (int page_num : opts.pages) {
-        if (page_num < 1 || static_cast<size_type>(page_num) > total) {
-            std::cerr << "Warning: page " << page_num << " out of range (1-" << total
-                      << "), skipping\n";
-            continue;
-        }
+    for (std::size_t page_num : resolve_page_range(opts.pages, total)) {
         to_remove.insert(static_cast<size_type>(page_num));
     }
 
@@ -173,12 +169,15 @@ void register_pages(CLI::App& app) {
         ->check(CLI::ExistingFile);
     del_cmd->add_option("-o,--output", del_opts->output, "Output PDF file")
         ->required();
-    del_cmd->add_option("-p,--pages", del_opts->pages, "Page numbers to delete (1-based)")
+    del_cmd->add_option("-p,--pages", del_opts->pages, "Pages to delete, e.g. 1-3,7,last or even")
         ->required();
     del_cmd->callback([del_opts]() {
         try {
             std::exit(run_pages_delete(*del_opts));
         } catch (const pdf_error& e) {
+            report_error(e);
+            std::exit(1);
+        } catch (const page_range_error& e) {
             report_error(e);
             std::exit(1);
         }
