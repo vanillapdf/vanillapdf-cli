@@ -2,7 +2,7 @@
 
 **The command-line toolkit for professional PDF processing, validation and digital signatures.**
 
-vanillapdf-cli inspects, edits, encrypts, signs and validates PDF documents from the command line on Linux, macOS and Windows. It puts the [vanillapdf](https://github.com/vanillapdf/vanillapdf) library in your shell and scripts: the same parser, encryption and signing engine, with no code to write. Each release is a single binary with the library linked in, so there is nothing else to install: download, extract and run.
+vanillapdf-cli is a cross-platform command-line tool for working with PDF documents. It merges, splits, rotates, compresses, encrypts, signs and validates PDFs on Linux, macOS and Windows, with one simple command per task.
 
 ---
 
