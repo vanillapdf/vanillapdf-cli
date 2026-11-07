@@ -42,3 +42,34 @@ These flags are available on every invocation:
 | `--copyright` | Print license information and exit |
 | `-v`, `--verbose` | Show detailed error output |
 | `--log-level LEVEL` | Set library log level (`off` `critical` `error` `warning` `info` `debug` `trace`) |
+
+```{toctree}
+:hidden:
+:caption: Getting Started
+
+installation
+```
+
+```{toctree}
+:hidden:
+:caption: Commands
+
+commands/index
+commands/info
+commands/metadata
+commands/merge
+commands/split
+commands/pages
+commands/rotate
+commands/compress
+commands/encrypt
+commands/sign
+commands/validate
+```
+
+```{toctree}
+:hidden:
+:caption: Developer Guide
+
+building
+```

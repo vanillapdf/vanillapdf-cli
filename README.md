@@ -6,7 +6,7 @@
 
 | Distribution | CI & Quality | License |
 |:---:|:---:|:---:|
-| [![Docs](https://readthedocs.org/projects/vanillapdf-cli/badge/?version=latest)](https://vanillapdf-cli.readthedocs.io/) | [![Compatibility](https://github.com/vanillapdf/vanillapdf-cli/actions/workflows/compat-vanillapdf-main.yml/badge.svg)](https://github.com/vanillapdf/vanillapdf-cli/actions/workflows/compat-vanillapdf-main.yml) [![Sanity check](https://github.com/vanillapdf/vanillapdf-cli/actions/workflows/sanity-check.yml/badge.svg)](https://github.com/vanillapdf/vanillapdf-cli/actions/workflows/sanity-check.yml) | [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE) |
+| [![Docs](https://readthedocs.org/projects/vanillapdf-cli/badge/?version=latest)](https://vanillapdf.readthedocs.io/projects/cli/) | [![Compatibility](https://github.com/vanillapdf/vanillapdf-cli/actions/workflows/compat-vanillapdf-main.yml/badge.svg)](https://github.com/vanillapdf/vanillapdf-cli/actions/workflows/compat-vanillapdf-main.yml) [![Sanity check](https://github.com/vanillapdf/vanillapdf-cli/actions/workflows/sanity-check.yml/badge.svg)](https://github.com/vanillapdf/vanillapdf-cli/actions/workflows/sanity-check.yml) | [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE) |
 
 </div>
 
@@ -34,7 +34,7 @@ cmake --build build
 cmake --install build
 ```
 
-See [Building from source](https://vanillapdf-cli.readthedocs.io/building) for all options, including static builds and system-package builds.
+See [Building from source](https://vanillapdf.readthedocs.io/projects/cli/en/latest/building/) for all options, including static builds and system-package builds.
 
 ### Package managers
 
@@ -95,7 +95,7 @@ Errors go to `stderr`; the process exits non-zero on failure. Input files are po
 | `odd` / `even` | every odd / even page | `even` → 2,4,6,8,10 |
 | `!entry` | exclude those pages | `1-5,!3` → 1,2,4,5 |
 
-The range selects a set of pages, always processed in document order. A range of only exclusions starts from all pages (`!first` = every page but the first). A page outside the document is an error. Quote ranges that contain `!` or spaces: `-p "!first,!last"`. See the [page range reference](https://vanillapdf-cli.readthedocs.io/commands/#page-ranges) for details.
+The range selects a set of pages, always processed in document order. A range of only exclusions starts from all pages (`!first` = every page but the first). A page outside the document is an error. Quote ranges that contain `!` or spaces: `-p "!first,!last"`. See the [page range reference](https://vanillapdf.readthedocs.io/projects/cli/en/latest/commands/#page-ranges) for details.
 
 ---
 
@@ -402,14 +402,14 @@ vanillapdf-cli follows [Semantic Versioning](https://semver.org/). See [CHANGELO
 
 ## Documentation
 
-Full documentation is hosted on **[Read the Docs](https://vanillapdf-cli.readthedocs.io/)**.
+Full documentation is hosted on **[Read the Docs](https://vanillapdf.readthedocs.io/projects/cli/)**.
 
 | Guide | Description |
 |-------|-------------|
-| [Home](https://vanillapdf-cli.readthedocs.io/) | Overview and quick start |
-| [Installation](https://vanillapdf-cli.readthedocs.io/installation) | Release archives and build from source |
-| [Commands](https://vanillapdf-cli.readthedocs.io/commands/) | Full reference for every command |
-| [Building from Source](https://vanillapdf-cli.readthedocs.io/building) | CMake presets and build options |
+| [Home](https://vanillapdf.readthedocs.io/projects/cli/) | Overview and quick start |
+| [Installation](https://vanillapdf.readthedocs.io/projects/cli/en/latest/installation/) | Release archives and build from source |
+| [Commands](https://vanillapdf.readthedocs.io/projects/cli/en/latest/commands/) | Full reference for every command |
+| [Building from Source](https://vanillapdf.readthedocs.io/projects/cli/en/latest/building/) | CMake presets and build options |
 
 Runnable workflow scripts (batch merge, compress, sign/verify, validate) live in the [`examples/`](examples/) directory.
 

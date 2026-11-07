@@ -32,16 +32,18 @@ gh attestation verify vanillapdf-cli-<version>-<platform>.zip \
   --repo vanillapdf/vanillapdf-cli
 ```
 
-!!! note "macOS Gatekeeper"
-    Release binaries are not notarized. On first run macOS may block the binary
-    with *"cannot be opened because the developer cannot be verified."* Clear the
-    quarantine flag after extracting:
+````{admonition} macOS Gatekeeper
+:class: note
+Release binaries are not notarized. On first run macOS may block the binary
+with *"cannot be opened because the developer cannot be verified."* Clear the
+quarantine flag after extracting:
 
-    ```sh
-    xattr -d com.apple.quarantine ./vanillapdf-cli
-    ```
+```sh
+xattr -d com.apple.quarantine ./vanillapdf-cli
+```
 
-    or right-click the binary in Finder and choose **Open**.
+or right-click the binary in Finder and choose **Open**.
+````
 
 ## Build from source
 
@@ -57,6 +59,8 @@ cmake --install build
 
 ## Package managers
 
-!!! note "Coming soon"
-    Homebrew, apt (Debian/Ubuntu), and dnf (Fedora/RHEL) packages are planned
-    for a future release. For now, use a release archive or build from source.
+```{admonition} Coming soon
+:class: note
+Homebrew, apt (Debian/Ubuntu), and dnf (Fedora/RHEL) packages are planned
+for a future release. For now, use a release archive or build from source.
+```

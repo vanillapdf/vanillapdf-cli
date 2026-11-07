@@ -4,7 +4,7 @@ Manage digital signatures in a PDF.
 
 ---
 
-## add {#add}
+## add
 
 Apply a digital signature using a PKCS#12 certificate.
 
@@ -43,7 +43,7 @@ vanillapdf-cli sign add contract.pdf -o contract-signed.pdf \
 
 ---
 
-## list {#list}
+## list
 
 List all digital signatures embedded in a PDF.
 
@@ -110,7 +110,7 @@ signature could not be read, `error` holds the reason and the other fields are
 
 ---
 
-## verify {#verify}
+## verify
 
 Verify the digital signatures in a PDF using system or custom trusted certificates.
 
