@@ -7,6 +7,15 @@ attached to every
 [GitHub release](https://github.com/vanillapdf/vanillapdf-cli/releases).
 Download the archive for your platform, extract it, and run `vanillapdf-cli`.
 
+| Platform | Architectures | Minimum version |
+|----------|---------------|-----------------|
+| Linux | x64, arm64 | glibc 2.34: Ubuntu 22.04, Debian 12, RHEL/Rocky 9 |
+| Windows | x64, arm64 | |
+| macOS | x64, arm64 | macOS 14 |
+
+Older Linux distributions (Ubuntu 20.04, RHEL/Rocky 8) are not supported by the
+prebuilt archives. Build from source there.
+
 ## Verify your download
 
 Each archive is published with a matching `.sha256` file. Verify the checksum

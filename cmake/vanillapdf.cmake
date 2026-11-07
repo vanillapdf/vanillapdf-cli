@@ -22,6 +22,10 @@ else()
         GIT_REPOSITORY https://github.com/vanillapdf/vanillapdf.git
         GIT_TAG        ${VANILLAPDF_GIT_TAG}
         GIT_SUBMODULES ""
+        # Link the library into the CLI without building or installing anything
+        # else from it. Without this, its install rules put the static library,
+        # headers, CMake config, and vanillapdf.tools into every CLI package.
+        EXCLUDE_FROM_ALL
     )
     FetchContent_MakeAvailable(vanillapdf)
 endif()

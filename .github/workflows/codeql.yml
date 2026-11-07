@@ -55,7 +55,7 @@ jobs:
           path: |
             ${{ env.BUILD_DIR }}/vcpkg
             ${{ env.BUILD_DIR }}/vcpkg_installed
-          key: vcpkg-codeql-${{ hashFiles('vcpkg.json') }}
+          key: vcpkg-codeql-${{ hashFiles('vcpkg.json', 'cmake/vcpkg_init.cmake') }}
           restore-keys: vcpkg-codeql-
 
       # Configure before CodeQL starts tracing so dependency builds (vcpkg ports)
