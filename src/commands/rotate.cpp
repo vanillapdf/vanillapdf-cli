@@ -1,14 +1,18 @@
+#include "commands/commands.h"
+#include "utils/error.h"
+#include "utils/handle_guard.h"
+#include "utils/page_range.h"
+
 #include <CLI/CLI.hpp>
+
 #include <iostream>
 #include <memory>
-#include <set>
 #include <string>
 
-#include "commands/commands.hpp"
-#include "utils/handles.hpp"
-#include "utils/page_range.hpp"
+namespace vanillapdf {
+namespace cli {
 
-namespace vanillapdf::cli::commands {
+namespace {
 
 struct RotateOptions {
     std::string input;
@@ -17,106 +21,107 @@ struct RotateOptions {
     std::string pages;
 };
 
-static void rotate_page(PageTreeHandle* page_tree, size_type page_idx, int angle) {
-    PageObjectPtr page;
-    check(PageTree_GetPage(page_tree, page_idx, page.put()), "Failed to get page");
+void rotate_page(PageTreeHandle* page_tree, size_type page_number, int angle) {
+    PageObjectGuard page;
+    THROW_IF_NOT_SUCCESS(PageTree_GetPage(page_tree, page_number, page.out()), "Failed to get page");
 
-    DictionaryObjectPtr dict;
-    check(PageObject_GetBaseObject(page.get(), dict.put()), "Failed to get page dictionary");
+    DictionaryObjectGuard page_dictionary;
+    THROW_IF_NOT_SUCCESS(PageObject_GetBaseObject(page, page_dictionary.out()), "Failed to get page dictionary");
 
-    NameObjectPtr rotate_name;
-    check(NameObject_CreateFromDecodedString("Rotate", rotate_name.put()),
-          "Failed to create Rotate name");
+    NameObjectGuard rotate_name;
+    THROW_IF_NOT_SUCCESS(NameObject_CreateFromDecodedString("Rotate", rotate_name.out()),
+        "Failed to create Rotate name");
+
+    boolean_type rotate_found = VANILLAPDF_RV_FALSE;
+    ObjectGuard existing_rotate;
+    THROW_IF_NOT_SUCCESS(DictionaryObject_TryFind(page_dictionary, rotate_name, &rotate_found, existing_rotate.out()),
+        "Failed to search for Rotate entry");
 
     int current_rotation = 0;
+    if (rotate_found == VANILLAPDF_RV_TRUE) {
+        IntegerObjectGuard existing_integer;
+        THROW_IF_NOT_SUCCESS(IntegerObject_FromObject(existing_rotate, existing_integer.out()),
+            "Failed to read Rotate value");
 
-    ObjectPtr existing;
-    boolean_type found = VANILLAPDF_RV_FALSE;
-    error_type find_err = DictionaryObject_TryFind(dict.get(), rotate_name.get(), &found, existing.put());
-    check(find_err, "Failed to search for Rotate entry");
-
-    if (found == VANILLAPDF_RV_TRUE) {
-        IntegerObjectPtr int_obj;
-        check(IntegerObject_FromObject(existing.get(), int_obj.put()), "Failed to read Rotate value");
-        bigint_type val = 0;
-        check(IntegerObject_GetIntegerValue(int_obj.get(), &val), "Failed to get integer value");
-        current_rotation = static_cast<int>(val);
+        bigint_type existing_value = 0;
+        THROW_IF_NOT_SUCCESS(IntegerObject_GetIntegerValue(existing_integer, &existing_value),
+            "Failed to get integer value");
+        current_rotation = static_cast<int>(existing_value);
     }
 
     int new_rotation = (current_rotation + angle) % 360;
+    auto new_rotation_converted = static_cast<bigint_type>(new_rotation);
 
-    IntegerObjectPtr new_int;
-    check(IntegerObject_Create(new_int.put()), "Failed to create integer object");
-    check(IntegerObject_SetIntegerValue(new_int.get(), static_cast<bigint_type>(new_rotation)),
-          "Failed to set rotation value");
+    IntegerObjectGuard new_integer;
+    THROW_IF_NOT_SUCCESS(IntegerObject_Create(new_integer.out()), "Failed to create integer object");
+    THROW_IF_NOT_SUCCESS(IntegerObject_SetIntegerValue(new_integer, new_rotation_converted),
+        "Failed to set rotation value");
 
-    ObjectPtr new_obj;
-    check(IntegerObject_ToObject(new_int.get(), new_obj.put()), "Failed to convert to object");
+    ObjectGuard new_rotate;
+    THROW_IF_NOT_SUCCESS(IntegerObject_ToObject(new_integer, new_rotate.out()), "Failed to convert to object");
 
-    check(DictionaryObject_Insert(dict.get(), rotate_name.get(), new_obj.get(), VANILLAPDF_RV_TRUE),
-          "Failed to set Rotate entry");
+    THROW_IF_NOT_SUCCESS(DictionaryObject_Insert(page_dictionary, rotate_name, new_rotate, VANILLAPDF_RV_TRUE),
+        "Failed to set Rotate entry");
 }
 
-static int run_rotate(const RotateOptions& opts) {
-    DocumentPtr document;
-    check(Document_Open(opts.input.c_str(), document.put()), "Failed to open document");
+int process_rotate(const RotateOptions& options) {
+    DocumentGuard document;
+    THROW_IF_NOT_SUCCESS(Document_Open(options.input.c_str(), document.out()), "Failed to open document");
 
-    CatalogPtr catalog;
-    check(Document_GetCatalog(document.get(), catalog.put()), "Failed to get catalog");
+    CatalogGuard catalog;
+    THROW_IF_NOT_SUCCESS(Document_GetCatalog(document, catalog.out()), "Failed to get catalog");
 
-    PageTreePtr page_tree;
-    check(Catalog_GetPages(catalog.get(), page_tree.put()), "Failed to get page tree");
+    PageTreeGuard page_tree;
+    THROW_IF_NOT_SUCCESS(Catalog_GetPages(catalog, page_tree.out()), "Failed to get page tree");
 
-    size_type total_pages = 0;
-    check(PageTree_GetPageCount(page_tree.get(), &total_pages), "Failed to get page count");
+    size_type page_count = 0;
+    THROW_IF_NOT_SUCCESS(PageTree_GetPageCount(page_tree, &page_count), "Failed to get page count");
 
-    // Page indices in the PageTree API are 1-based.
-    if (opts.pages.empty()) {
-        for (size_type i = 1; i <= total_pages; ++i) {
-            rotate_page(page_tree.get(), i, opts.angle);
+    // Page numbers in the PageTree API are 1-based
+    if (options.pages.empty()) {
+        for (size_type page_number = 1; page_number <= page_count; page_number++) {
+            rotate_page(page_tree, page_number, options.angle);
         }
-        std::cerr << "Rotated all " << total_pages << " pages by " << opts.angle << " degrees\n";
+
+        std::cerr << "Rotated all " << page_count << " pages by " << options.angle << " degrees\n";
     } else {
-        // A set, so a page listed twice (e.g. "1-3,2") is still rotated once.
-        auto to_rotate = resolve_page_range(opts.pages, total_pages);
-        for (std::size_t page_num : to_rotate) {
-            rotate_page(page_tree.get(), static_cast<size_type>(page_num), opts.angle);
+        // A set, so a page listed twice (e.g. "1-3,2") is still rotated once
+        auto rotated_pages = resolve_page_range(options.pages, page_count);
+        for (auto page_number : rotated_pages) {
+            auto page_number_converted = static_cast<size_type>(page_number);
+            rotate_page(page_tree, page_number_converted, options.angle);
         }
-        std::cerr << "Rotated " << to_rotate.size() << " pages by " << opts.angle << " degrees\n";
+
+        std::cerr << "Rotated " << rotated_pages.size() << " pages by " << options.angle << " degrees\n";
     }
 
-    check(Document_Save(document.get(), opts.output.c_str()), "Failed to save document");
-    std::cerr << "Output: " << opts.output << "\n";
+    THROW_IF_NOT_SUCCESS(Document_Save(document, options.output.c_str()), "Failed to save document");
+    std::cerr << "Output: " << options.output << "\n";
 
-    return 0;
+    return VANILLAPDF_CLI_ERROR_SUCCESS;
 }
 
-void register_rotate(CLI::App& app) {
-    auto opts = std::make_shared<RotateOptions>();
+} // namespace
 
-    auto* cmd = app.add_subcommand("rotate", "Rotate pages in a PDF document");
-    cmd->add_option("input", opts->input, "Input PDF file")
+void register_rotate(CLI::App& app, int& exit_code) {
+    auto options = std::make_shared<RotateOptions>();
+    auto* command = app.add_subcommand("rotate", "Rotate pages in a PDF document");
+
+    command->add_option("input", options->input, "Input PDF file")
         ->required()
         ->check(CLI::ExistingFile);
-    cmd->add_option("-o,--output", opts->output, "Output PDF file")
+    command->add_option("-o,--output", options->output, "Output PDF file")
         ->required();
-    cmd->add_option("-a,--angle", opts->angle, "Rotation angle (90, 180, 270)")
+    command->add_option("-a,--angle", options->angle, "Rotation angle (90, 180, 270)")
         ->required()
         ->check(CLI::IsMember({90, 180, 270}));
-    cmd->add_option("-p,--pages", opts->pages,
-                    "Pages to rotate, e.g. 1-3,7,last or even (default: all)");
+    command->add_option("-p,--pages", options->pages,
+        "Pages to rotate, e.g. 1-3,7,last or even (default: all)");
 
-    cmd->callback([opts]() {
-        try {
-            std::exit(run_rotate(*opts));
-        } catch (const pdf_error& e) {
-            report_error(e);
-            std::exit(1);
-        } catch (const page_range_error& e) {
-            report_error(e);
-            std::exit(1);
-        }
+    command->callback([options, &exit_code]() {
+        exit_code = process_rotate(*options);
     });
 }
 
-} // namespace vanillapdf::cli::commands
+} // cli
+} // vanillapdf

@@ -4,9 +4,9 @@
 
 #include <gtest/gtest.h>
 
-#include "utils/page_range.hpp"
+#include "utils/page_range.h"
 
-using vanillapdf::cli::page_range_error;
+using vanillapdf::cli::PageRangeException;
 using vanillapdf::cli::resolve_page_range;
 
 using Pages = std::set<std::size_t>;
@@ -69,17 +69,17 @@ TEST(PageRange, WhitespaceAroundEntriesIsIgnored) {
 }
 
 TEST(PageRange, OutOfRangePagesAreErrors) {
-    EXPECT_THROW(resolve_page_range("0", 3), page_range_error);
-    EXPECT_THROW(resolve_page_range("4", 3), page_range_error);
-    EXPECT_THROW(resolve_page_range("2-4", 3), page_range_error);
-    EXPECT_THROW(resolve_page_range("last", 0), page_range_error);
+    EXPECT_THROW(resolve_page_range("0", 3), PageRangeException);
+    EXPECT_THROW(resolve_page_range("4", 3), PageRangeException);
+    EXPECT_THROW(resolve_page_range("2-4", 3), PageRangeException);
+    EXPECT_THROW(resolve_page_range("last", 0), PageRangeException);
 }
 
-// Property: every malformed range is rejected with page_range_error.
+// Property: every malformed range is rejected with PageRangeException.
 class PageRangeMalformed : public testing::TestWithParam<std::string> {};
 
 TEST_P(PageRangeMalformed, Throws) {
-    EXPECT_THROW(resolve_page_range(GetParam(), 10), page_range_error);
+    EXPECT_THROW(resolve_page_range(GetParam(), 10), PageRangeException);
 }
 
 INSTANTIATE_TEST_SUITE_P(
