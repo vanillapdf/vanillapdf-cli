@@ -12,26 +12,22 @@
 
 </div>
 
-**vanillapdf-cli** inspects, edits, encrypts, signs and validates PDF documents from the command line on Linux, macOS and Windows. It is the command-line front end of the [vanillapdf](https://github.com/vanillapdf/vanillapdf) library, so it handles PDFs exactly the way applications built on the library do. Release archives are self-contained: download, extract and run.
+**vanillapdf-cli** is a cross-platform command-line tool for working with PDF documents. It merges, splits, rotates, compresses, encrypts, signs and validates PDFs on Linux, macOS and Windows, with one simple command per task.
 
 - 📄 **Inspect & transform** — read and write metadata, merge, split, rotate, delete and insert pages, compress
-- 🔒 **Encrypt & decrypt** — AES-256 (or 128/RC4) with permissions and passwords
-- 🔏 **Sign & verify** — apply and validate digital signatures from PKCS#12 keys
+- 🔒 **Encrypt & decrypt** — AES-256 *(or 128/RC4)* with permissions and passwords
+- 🔏 **Sign & verify** — apply and validate digital signatures with RSA or ECDSA keys from PKCS#12 files
 - 🩺 **Validate structure** — walk the xref/trailer and report malformed files
-- ⚙️ **Scriptable** — clean stdout/stderr separation, JSON output, meaningful exit codes
-
-## Contents
-
-- [Install](#install)
-- [Quick start](#quick-start)
-- [Commands](#commands)
-- [Limitations](#limitations)
-- [Contributing](#contributing)
-- [License](#license)
 
 ## Install
 
-**Release archives** for Linux, macOS and Windows (x64 and ARM64) are attached to every [GitHub release](https://github.com/vanillapdf/vanillapdf-cli/releases). They are self-contained: download, extract, and run `vanillapdf-cli`. Linux needs glibc 2.34 or newer (Ubuntu 22.04+, Debian 12+, RHEL/Rocky 9+); macOS needs 14 or newer.
+**Release archives** are attached to every [GitHub release](https://github.com/vanillapdf/vanillapdf-cli/releases). They are self-contained: download, extract, and run `vanillapdf-cli`.
+
+| Platform | Architectures | Requires |
+|----------|---------------|----------|
+| Linux | x64, arm64 | glibc 2.34+ |
+| macOS | x64, arm64 | macOS 14+ |
+| Windows | x64, arm64 | Windows 10+ |
 
 **From source**, with CMake 3.20+ and a C++17 compiler (vcpkg is bootstrapped and vanillapdf fetched automatically):
 
@@ -84,7 +80,7 @@ Each command links to its reference page, with every option explained and more e
 | [`sign add` / `list` / `verify`](https://vanillapdf.readthedocs.io/projects/cli/en/latest/commands/sign.html) | Apply, list and verify digital signatures |
 | [`validate`](https://vanillapdf.readthedocs.io/projects/cli/en/latest/commands/validate.html) | Validate PDF file structure |
 
-Input files are positional arguments and output files use `-o` / `--output`. Commands that work on some pages take a [page range](https://vanillapdf.readthedocs.io/projects/cli/en/latest/commands/#page-ranges) with `-p` / `--pages`, such as `1-3,last`, `even` or `"!first"`. Global flags (`--version`, `-v` / `--verbose`, `--log-level`) are listed on the [documentation home page](https://vanillapdf.readthedocs.io/projects/cli/).
+Page ranges such as `1-3,last` or `even` are described in the [command reference](https://vanillapdf.readthedocs.io/projects/cli/en/latest/commands/#page-ranges).
 
 Runnable workflow scripts (batch merge, compress, sign/verify, validate) live in [`examples/`](examples/).
 
