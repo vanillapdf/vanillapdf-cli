@@ -6,13 +6,14 @@
 | [`metadata set`](metadata.md) | Write document information fields |
 | [`merge`](merge.md) | Combine multiple PDFs into one |
 | [`split`](split.md) | Extract pages into a new PDF |
-| [`pages`](pages.md) | Delete or insert pages |
+| [`pages delete` / `insert`](pages.md) | Delete pages, or insert pages from another PDF |
 | [`rotate`](rotate.md) | Rotate pages by 90 / 180 / 270 degrees |
 | [`compress`](compress.md) | Compress and optimise a PDF |
 | [`encrypt add`](encrypt.md#add) | Add password encryption (AES-256 by default) |
 | [`encrypt remove`](encrypt.md#remove) | Remove encryption |
 | [`sign add`](sign.md#add) | Apply a digital signature (PKCS#12) |
 | [`sign list`](sign.md#list) | List signatures in a PDF |
+| [`sign verify`](sign.md#verify) | Verify signatures in a PDF |
 | [`validate`](validate.md) | Validate PDF file structure |
 
 ## Conventions

@@ -24,14 +24,14 @@ cmake --install build
 
 | Preset | Description |
 |---|---|
-| *(none)* | Auto-bootstraps vcpkg, builds vanillapdf from `main` |
+| *(none)* | Auto-bootstraps vcpkg, builds vanillapdf at the pinned tag |
 | `default` | All deps from system (`find_package`). For Homebrew / deb / rpm. |
 | `vcpkg` | Uses an existing vcpkg installation via `VCPKG_ROOT` |
 | `vcpkg-dev` | Auto-bootstraps vcpkg, builds vanillapdf from `main` (explicit) |
 | `vcpkg-static` | Windows only — static binary via vcpkg |
 
 ```sh
-cmake --preset vcpkg-dev   # equivalent to cmake -B build with defaults
+cmake --preset vcpkg-dev   # like cmake -B build, but vanillapdf from main
 cmake --preset default     # system packages only, no vcpkg
 cmake --preset vcpkg       # VCPKG_ROOT must be set
 ```
@@ -43,8 +43,9 @@ cmake --preset vcpkg       # VCPKG_ROOT must be set
 | `VANILLAPDF_CLI_INTERNAL_VCPKG` | `ON` | Auto-manage deps via vcpkg |
 | `VANILLAPDF_CLI_EXTERNAL_VANILLAPDF` | `OFF` | Use system-installed vanillapdf |
 | `VANILLAPDF_CLI_EXTERNAL_CLI11` | `OFF` | Use system-installed CLI11 |
-| `VANILLAPDF_GIT_TAG` | `main` | vanillapdf branch / tag for FetchContent |
-| `VANILLAPDF_CLI_ENABLE_TESTS` | `ON` | Build integration tests |
+| `VANILLAPDF_CLI_EXTERNAL_FMT` | `OFF` | Use system-installed fmt |
+| `VANILLAPDF_GIT_TAG` | pinned release (see `cmake/vanillapdf.cmake`) | vanillapdf branch / tag for FetchContent |
+| `VANILLAPDF_CLI_ENABLE_TESTS` | `OFF` | Build unit and integration tests |
 
 ## Running tests
 

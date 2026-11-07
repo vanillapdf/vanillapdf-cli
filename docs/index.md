@@ -11,14 +11,14 @@ Built on [vanillapdf](https://vanillapdf.com), a cross-platform PDF library with
 | Command | Description |
 |---|---|
 | [`info`](commands/info.md) | Display file metadata and page count |
+| [`metadata set`](commands/metadata.md) | Write document information fields |
 | [`merge`](commands/merge.md) | Combine multiple PDFs into one |
 | [`split`](commands/split.md) | Extract pages into a new PDF |
+| [`pages delete` / `insert`](commands/pages.md) | Delete pages, or insert pages from another PDF |
 | [`rotate`](commands/rotate.md) | Rotate pages by 90 / 180 / 270 degrees |
 | [`compress`](commands/compress.md) | Compress and optimise a PDF |
-| [`encrypt add`](commands/encrypt.md) | Add password encryption |
-| [`encrypt remove`](commands/encrypt.md) | Remove encryption |
-| [`sign add`](commands/sign.md) | Apply a digital signature |
-| [`sign list`](commands/sign.md) | List signatures in a PDF |
+| [`encrypt add` / `remove`](commands/encrypt.md) | Add or remove password encryption |
+| [`sign add` / `list` / `verify`](commands/sign.md) | Apply, list and verify digital signatures |
 | [`validate`](commands/validate.md) | Validate PDF file structure |
 
 ## Quick start
@@ -40,6 +40,7 @@ These flags are available on every invocation:
 |---|---|
 | `--version` | Print version and exit |
 | `--copyright` | Print license information and exit |
+| `--about` | Print project information and links and exit |
 | `-v`, `--verbose` | Show detailed error output |
 | `--log-level LEVEL` | Set library log level (`off` `critical` `error` `warning` `info` `debug` `trace`) |
 
