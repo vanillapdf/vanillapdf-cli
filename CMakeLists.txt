@@ -71,6 +71,8 @@ add_executable(vanillapdf-cli
     src/commands/sign.cpp
     src/commands/validate.cpp
     src/utils/error.hpp
+    src/utils/page_range.hpp
+    src/utils/page_range.cpp
 )
 
 target_link_libraries(vanillapdf-cli PRIVATE

@@ -3,24 +3,17 @@
 #include <memory>
 #include <set>
 #include <string>
-#include <utility>
-#include <vector>
 
 #include "commands/commands.hpp"
 #include "utils/handles.hpp"
+#include "utils/page_range.hpp"
 
 namespace vanillapdf::cli::commands {
 
 struct PagesDeleteOptions {
     std::string input;
     std::string output;
-    std::vector<int> pages;
-};
-
-struct PagesReorderOptions {
-    std::string input;
-    std::string output;
-    std::vector<int> order;
+    std::string pages;
 };
 
 struct PagesInsertOptions {
@@ -49,15 +42,7 @@ static int run_pages_delete(const PagesDeleteOptions& opts) {
     check(PageTree_GetPageCount(pages.get(), &total), "Failed to get page count");
 
     // Page indices in the PageTree API are 1-based.
-    std::set<size_type> to_remove;
-    for (int page_num : opts.pages) {
-        if (page_num < 1 || static_cast<size_type>(page_num) > total) {
-            std::cerr << "Warning: page " << page_num << " out of range (1-" << total
-                      << "), skipping\n";
-            continue;
-        }
-        to_remove.insert(static_cast<size_type>(page_num));
-    }
+    auto to_remove = resolve_page_range(opts.pages, total);
 
     if (to_remove.empty()) {
         throw pdf_error(VANILLAPDF_ERROR_PARAMETER_VALUE, "No valid pages to delete");
@@ -68,58 +53,11 @@ static int run_pages_delete(const PagesDeleteOptions& opts) {
 
     // Remove from the highest page number down so earlier ones stay valid.
     for (auto it = to_remove.rbegin(); it != to_remove.rend(); ++it) {
-        check(PageTree_RemovePage(pages.get(), *it), "Failed to remove page");
+        check(PageTree_RemovePage(pages.get(), static_cast<size_type>(*it)), "Failed to remove page");
     }
 
     check(Document_Save(document.get(), opts.output.c_str()), "Failed to save output");
     std::cerr << "Wrote: " << opts.output << " (" << (total - to_remove.size()) << " pages)\n";
-    return 0;
-}
-
-static int run_pages_reorder(const PagesReorderOptions& opts) {
-    DocumentPtr document;
-    CatalogPtr catalog;
-    PageTreePtr pages;
-    open_page_tree(opts.input, document, catalog, pages);
-
-    size_type total = 0;
-    check(PageTree_GetPageCount(pages.get(), &total), "Failed to get page count");
-
-    // --order must be a permutation of 1..total (every page exactly once).
-    if (opts.order.size() != total) {
-        throw pdf_error(VANILLAPDF_ERROR_PARAMETER_VALUE,
-                        "--order must list all " + std::to_string(total) + " pages exactly once");
-    }
-    std::set<int> seen;
-    for (int page_num : opts.order) {
-        if (page_num < 1 || static_cast<size_type>(page_num) > total || !seen.insert(page_num).second) {
-            throw pdf_error(VANILLAPDF_ERROR_PARAMETER_VALUE,
-                            "--order must be a permutation of 1.." + std::to_string(total));
-        }
-    }
-
-    // Take a reference to each page in the desired order (this keeps the page
-    // objects alive across the removal below), then rebuild the tree.
-    // Page indices are 1-based. Take a reference to each page in the desired
-    // order (keeping the page objects alive across the removal below).
-    std::vector<PageObjectPtr> ordered;
-    ordered.reserve(total);
-    for (int page_num : opts.order) {
-        PageObjectPtr page;
-        check(PageTree_GetPage(pages.get(), static_cast<size_type>(page_num), page.put()),
-              "Failed to get page");
-        ordered.push_back(std::move(page));
-    }
-
-    for (size_type i = total; i > 0; --i) {
-        check(PageTree_RemovePage(pages.get(), i), "Failed to remove page");
-    }
-    for (auto& page : ordered) {
-        check(PageTree_AppendPage(pages.get(), page.get()), "Failed to append page");
-    }
-
-    check(Document_Save(document.get(), opts.output.c_str()), "Failed to save output");
-    std::cerr << "Wrote: " << opts.output << "\n";
     return 0;
 }
 
@@ -162,7 +100,7 @@ static int run_pages_insert(const PagesInsertOptions& opts) {
 }
 
 void register_pages(CLI::App& app) {
-    auto* cmd = app.add_subcommand("pages", "Delete, reorder, or insert pages");
+    auto* cmd = app.add_subcommand("pages", "Delete or insert pages");
     cmd->require_subcommand(1);
 
     // pages delete
@@ -173,7 +111,7 @@ void register_pages(CLI::App& app) {
         ->check(CLI::ExistingFile);
     del_cmd->add_option("-o,--output", del_opts->output, "Output PDF file")
         ->required();
-    del_cmd->add_option("-p,--pages", del_opts->pages, "Page numbers to delete (1-based)")
+    del_cmd->add_option("-p,--pages", del_opts->pages, "Pages to delete, e.g. 1-3,7,last or even")
         ->required();
     del_cmd->callback([del_opts]() {
         try {
@@ -181,25 +119,7 @@ void register_pages(CLI::App& app) {
         } catch (const pdf_error& e) {
             report_error(e);
             std::exit(1);
-        }
-    });
-
-    // pages reorder
-    auto reo_opts = std::make_shared<PagesReorderOptions>();
-    auto* reo_cmd = cmd->add_subcommand("reorder", "Reorder the pages of a PDF document");
-    reo_cmd->add_option("input", reo_opts->input, "Input PDF file")
-        ->required()
-        ->check(CLI::ExistingFile);
-    reo_cmd->add_option("-o,--output", reo_opts->output, "Output PDF file")
-        ->required();
-    reo_cmd->add_option("--order", reo_opts->order,
-                        "New page order as a comma-separated permutation, e.g. 3,1,2")
-        ->required()
-        ->delimiter(',');
-    reo_cmd->callback([reo_opts]() {
-        try {
-            std::exit(run_pages_reorder(*reo_opts));
-        } catch (const pdf_error& e) {
+        } catch (const page_range_error& e) {
             report_error(e);
             std::exit(1);
         }

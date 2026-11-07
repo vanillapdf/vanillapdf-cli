@@ -53,6 +53,11 @@ inline void report_error(const pdf_error& e) {
     fmt::print(stderr, "Error: {}\n", e.what());
 }
 
+// Print a non-library error (e.g. a malformed page range) to stderr.
+inline void report_error(const std::exception& e) {
+    fmt::print(stderr, "Error: {}\n", e.what());
+}
+
 } // namespace vanillapdf::cli
 
 #endif // VANILLAPDF_CLI_UTILS_ERROR_HPP

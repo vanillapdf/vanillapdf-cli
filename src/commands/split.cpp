@@ -3,17 +3,17 @@
 #include <memory>
 #include <set>
 #include <string>
-#include <vector>
 
 #include "commands/commands.hpp"
 #include "utils/handles.hpp"
+#include "utils/page_range.hpp"
 
 namespace vanillapdf::cli::commands {
 
 struct SplitOptions {
     std::string input;
     std::string output;
-    std::vector<int> pages;
+    std::string pages;
 };
 
 static int run_split(const SplitOptions& opts) {
@@ -29,20 +29,15 @@ static int run_split(const SplitOptions& opts) {
     size_type total_pages = 0;
     check(PageTree_GetPageCount(pages.get(), &total_pages), "Failed to get page count");
 
-    // The 1-based pages to keep. Omitting -p keeps everything (a plain copy).
-    std::set<size_type> keep;
+    // The 1-based pages to keep, in document order. Omitting -p keeps everything
+    // (a plain copy).
+    std::set<std::size_t> keep;
     if (opts.pages.empty()) {
-        for (size_type i = 1; i <= total_pages; ++i) {
-            keep.insert(i);
+        for (std::size_t page_number = 1; page_number <= total_pages; page_number += 1) {
+            keep.insert(page_number);
         }
     } else {
-        for (int page_num : opts.pages) {
-            if (page_num < 1 || static_cast<size_type>(page_num) > total_pages) {
-                std::cerr << "Warning: page " << page_num << " out of range (1-" << total_pages << "), skipping\n";
-                continue;
-            }
-            keep.insert(static_cast<size_type>(page_num));
-        }
+        keep = resolve_page_range(opts.pages, total_pages);
     }
 
     if (keep.empty()) {
@@ -73,12 +68,17 @@ void register_split(CLI::App& app) {
         ->check(CLI::ExistingFile);
     cmd->add_option("-o,--output", opts->output, "Output PDF file")
         ->required();
-    cmd->add_option("-p,--pages", opts->pages, "Page numbers to extract (1-based, default: all)");
+    cmd->add_option("-p,--pages", opts->pages,
+                    "Pages to extract, e.g. 1-3,7,last or odd,!1 (default: all); "
+                    "kept in document order");
 
     cmd->callback([opts]() {
         try {
             std::exit(run_split(*opts));
         } catch (const pdf_error& e) {
+            report_error(e);
+            std::exit(1);
+        } catch (const page_range_error& e) {
             report_error(e);
             std::exit(1);
         }
