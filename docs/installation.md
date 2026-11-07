@@ -1,22 +1,47 @@
 # Installation
 
-## Homebrew (macOS / Linux)
+## Download a release
+
+Prebuilt archives for Linux and macOS (`.tar.gz`) and Windows (`.zip`) are
+attached to every
+[GitHub release](https://github.com/vanillapdf/vanillapdf-cli/releases).
+Download the archive for your platform, extract it, and run `vanillapdf-cli`.
+
+## Verify your download
+
+Each archive is published with a matching `.sha256` file. Verify the checksum
+before extracting:
 
 ```sh
-brew install vanillapdf/tap/vanillapdf-cli
+# Linux / macOS
+sha256sum -c vanillapdf-cli-<version>-<platform>.tar.gz.sha256
 ```
 
-## Debian / Ubuntu
+```powershell
+# Windows (PowerShell)
+$expected = (Get-Content vanillapdf-cli-<version>-windows-x64.zip.sha256).Split()[0]
+(Get-FileHash vanillapdf-cli-<version>-windows-x64.zip -Algorithm SHA256).Hash -eq $expected
+```
+
+For a stronger guarantee, releases also carry **build provenance
+attestations**. If you have the [GitHub CLI](https://cli.github.com/), verify
+that an archive was built by this repository's release workflow:
 
 ```sh
-sudo apt install vanillapdf-cli
+gh attestation verify vanillapdf-cli-<version>-<platform>.zip \
+  --repo vanillapdf/vanillapdf-cli
 ```
 
-## RPM (Fedora / RHEL)
+!!! note "macOS Gatekeeper"
+    Release binaries are not notarized. On first run macOS may block the binary
+    with *"cannot be opened because the developer cannot be verified."* Clear the
+    quarantine flag after extracting:
 
-```sh
-sudo dnf install vanillapdf-cli
-```
+    ```sh
+    xattr -d com.apple.quarantine ./vanillapdf-cli
+    ```
+
+    or right-click the binary in Finder and choose **Open**.
 
 ## Build from source
 
@@ -29,3 +54,9 @@ cmake -B build
 cmake --build build
 cmake --install build
 ```
+
+## Package managers
+
+!!! note "Coming soon"
+    Homebrew, apt (Debian/Ubuntu), and dnf (Fedora/RHEL) packages are planned
+    for a future release. For now, use a release archive or build from source.

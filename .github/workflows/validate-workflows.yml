@@ -1,0 +1,27 @@
+name: Validate Workflows
+
+on:
+  pull_request:
+    branches: [ "main", "release/*" ]
+    paths:
+      - '.github/workflows/**'
+      - 'scripts/validate_workflows.py'
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  yaml-lint:
+    name: YAML syntax
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Validate YAML syntax
+        run: python3 scripts/validate_workflows.py .github/workflows/*.yml
