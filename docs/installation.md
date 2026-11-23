@@ -68,6 +68,10 @@ cmake --install build
 
 ## Package managers
 
+**Snap (Linux).** Snap packages for x64 and arm64 are attached to each GitHub
+release. Snap Store publishing is in progress; until then, install the
+downloaded file with `sudo snap install --dangerous vanillapdf-cli_<version>_amd64.snap`.
+
 ```{admonition} Coming soon
 :class: note
 Homebrew, apt (Debian/Ubuntu), and dnf (Fedora/RHEL) packages are planned
