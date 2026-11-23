@@ -43,15 +43,23 @@ gh attestation verify vanillapdf-cli-<version>-<platform>.zip \
 
 ````{admonition} macOS Gatekeeper
 :class: note
-Release binaries are not notarized. On first run macOS may block the binary
-with *"cannot be opened because the developer cannot be verified."* Clear the
-quarantine flag after extracting:
+Release binaries are not notarized yet.
+If you download the archive with a browser, macOS blocks the binary on first run
+with *"cannot be opened because the developer cannot be verified."*
+
+Downloads with `curl` or the GitHub CLI are not affected:
+
+```sh
+gh release download --repo vanillapdf/vanillapdf-cli --pattern '*macos-arm64*'
+```
+
+If the binary is already blocked, clear the quarantine flag:
 
 ```sh
 xattr -d com.apple.quarantine ./vanillapdf-cli
 ```
 
-or right-click the binary in Finder and choose **Open**.
+or allow it in **System Settings → Privacy & Security → Open Anyway**.
 ````
 
 ## Build from source
