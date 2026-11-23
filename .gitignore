@@ -20,3 +20,7 @@ Thumbs.db
 
 # Sphinx documentation build
 docs/_build/
+
+# Snap build input and output
+snap/local/
+*.snap

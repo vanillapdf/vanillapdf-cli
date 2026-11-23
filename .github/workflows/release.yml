@@ -20,6 +20,7 @@ on:
       - ".github/workflows/release.yml"
       - "scripts/generate_sbom.py"
       - "scripts/verify_package.sh"
+      - "snap/snapcraft.yaml"
 
 permissions: {}
 
@@ -274,6 +275,69 @@ jobs:
           VERSION: ${{ needs.prepare.outputs.version }}
         run: bash scripts/verify_package.sh dist/vanillapdf-cli-*.tar.gz "$VERSION" tests/fixtures/minimal.pdf
 
+  # The snap repackages the static Linux binary that build produced, so it contains
+  # the same binary as the archives. It is built on a runner of each architecture
+  # and installed there, then attested and attached to the release with the archives.
+  # Nothing is uploaded to the Snap Store, so no store credentials live in CI.
+  snap:
+    name: Snap (${{ matrix.arch }})
+    needs: [prepare, build]
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x64, arm64]
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download archive
+        uses: actions/download-artifact@v8
+        with:
+          name: release-linux-${{ matrix.arch }}
+          path: snap/local
+
+      # snap/snapcraft.yaml reads the archive from a fixed path.
+      - name: Rename the archive
+        run: mv snap/local/vanillapdf-cli-*.tar.gz snap/local/vanillapdf-cli.tar.gz
+
+      - name: Build snap
+        id: build
+        uses: snapcore/action-build@v1
+
+      - name: Verify the snap
+        env:
+          SNAP_FILE: ${{ steps.build.outputs.snap }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          sudo snap install --dangerous "$SNAP_FILE"
+          version=$(/snap/bin/vanillapdf-cli --version)
+          if [ "$version" != "$VERSION" ]; then
+            echo "::error::The snap reports version '$version', expected '$VERSION'"
+            exit 1
+          fi
+          /snap/bin/vanillapdf-cli info tests/fixtures/minimal.pdf > /dev/null
+
+      # Same "<hash>  <file>" format as the .sha256 files CPack writes for the archives.
+      - name: Checksum the snap
+        env:
+          SNAP_FILE: ${{ steps.build.outputs.snap }}
+        run: |
+          cd "$(dirname "$SNAP_FILE")"
+          sha256sum "$(basename "$SNAP_FILE")" > "$(basename "$SNAP_FILE").sha256"
+
+      - name: Upload snap
+        uses: actions/upload-artifact@v7
+        with:
+          name: snap-${{ matrix.arch }}
+          path: |
+            ${{ steps.build.outputs.snap }}
+            ${{ steps.build.outputs.snap }}.sha256
+          if-no-files-found: error
+
   # Create the GitHub release as a *draft*. The tag is deliberately not created here:
   # publishing the draft, after the production gate, is what creates it. The "Protected
   # release tags" ruleset forbids deleting a tag, so everything that can fail has to
@@ -281,7 +345,7 @@ jobs:
   # which can be deleted or picked up by a re-run.
   draft:
     name: Create draft release
-    needs: [prepare, build, portability]
+    needs: [prepare, build, portability, snap]
     if: needs.prepare.outputs.dry_run == 'false'
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -334,6 +398,13 @@ jobs:
           pattern: release-*
           merge-multiple: true
 
+      - name: Download snaps
+        uses: actions/download-artifact@v8
+        with:
+          path: dist
+          pattern: snap-*
+          merge-multiple: true
+
       - name: Download dependency manifests
         uses: actions/download-artifact@v8
         with:
@@ -359,6 +430,7 @@ jobs:
           subject-path: |
             dist/*.zip
             dist/*.tar.gz
+            dist/*.snap
 
       - name: Attest SBOM
         uses: actions/attest@v4
@@ -366,6 +438,7 @@ jobs:
           subject-path: |
             dist/*.zip
             dist/*.tar.gz
+            dist/*.snap
           sbom-path: vanillapdf-cli-${{ env.TAG }}-sbom.spdx.json
 
       - name: Upload assets
@@ -382,7 +455,7 @@ jobs:
 
       - name: Verify attestations
         run: |
-          for archive in dist/*.zip dist/*.tar.gz; do
+          for archive in dist/*.zip dist/*.tar.gz dist/*.snap; do
             gh attestation verify "$archive" --repo "$GITHUB_REPOSITORY"
           done
 

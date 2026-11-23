@@ -21,6 +21,8 @@ Dependencies: `vanillapdf` (libvanillapdf) and `CLI11`, resolved via `find_packa
 
 **Release archives**: `release.yml` builds the same platforms as the vanillapdf NuGet packages (Linux in the private `ghcr.io/vanillapdf/vanillapdf-rockylinux-*:9` images, so glibc 2.34 is the floor). Only the CLI is packaged: vanillapdf is `EXCLUDE_FROM_ALL`, and `scripts/verify_package.sh` fails on anything else in the archive. When a dependency is added to `vcpkg.json`, add its license to `NOTICE.md`.
 
+**Snap**: `release.yml` repackages the tested Linux release binary (`snap/snapcraft.yaml`, `dump` plugin), installs it on an x64 and an arm64 runner, and attaches both snaps to the release with the same provenance and SBOM attestations as the archives. Nothing is uploaded to the Snap Store yet, and CI holds no store credentials; Store publishing is in progress (noted in `docs/installation.md`).
+
 **deb/rpm**: CPack targets, system package dependencies declared in `CMakeLists.txt`.
 
 **Homebrew**: `homebrew/vanillapdf-cli.rb.in` is a template with `@PLACEHOLDER@` variables substituted at release time. The formula depends on `vanillapdf` (the Homebrew formula) and `cli11`; no extra cmake flags are needed since vcpkg is not activated (no toolchain file) and FetchContent is not triggered (`VANILLAPDF_GIT_TAG` defaults to empty).
