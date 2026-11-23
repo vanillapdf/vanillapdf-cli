@@ -1,7 +1,7 @@
 #include <cstddef>
+#include <ostream>
 #include <set>
 #include <string>
-#include <vector>
 
 #include <gtest/gtest.h>
 
@@ -76,29 +76,43 @@ TEST(PageRange, OutOfRangePagesAreErrors) {
     EXPECT_THROW(resolve_page_range("last", 0), PageRangeException);
 }
 
-// Property: every malformed range is rejected with PageRangeException. A loop rather
-// than TEST_P: GCC on Rocky 10 arm64 crashes instantiating TEST_P for std::string.
-TEST(PageRangeMalformed, Throws) {
-    const std::vector<std::string> ranges = {
-        "",
-        ",",
-        "1,",
-        "1,,2",
-        "-3",
-        "3-",
-        "1-2-3",
-        "!",
-        "!!1",
-        "+1",
-        "1.5",
-        "abc",
-        "First",
-        "odd-even",
-        "99999999999999999999999",
-    };
+namespace {
 
-    for (const auto& range : ranges) {
-        SCOPED_TRACE(range);
-        EXPECT_THROW(resolve_page_range(range, 10), PageRangeException);
-    }
+// The parameter is wrapped in a struct rather than TestWithParam<std::string>:
+// GCC 14 on arm64 crashes instantiating TEST_P for std::string (GCC PR116598,
+// fixed in GCC 15), and a struct holding a std::string does not trigger it.
+struct MalformedRangeCase {
+    std::string range;
+};
+
+void PrintTo(const MalformedRangeCase& value, std::ostream* stream) {
+    *stream << testing::PrintToString(value.range);
 }
+
+} // namespace
+
+// Property: every malformed range is rejected with PageRangeException.
+class PageRangeMalformed : public testing::TestWithParam<MalformedRangeCase> {};
+
+TEST_P(PageRangeMalformed, Throws) {
+    EXPECT_THROW(resolve_page_range(GetParam().range, 10), PageRangeException);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    Ranges, PageRangeMalformed,
+    testing::Values(
+        MalformedRangeCase{""},
+        MalformedRangeCase{","},
+        MalformedRangeCase{"1,"},
+        MalformedRangeCase{"1,,2"},
+        MalformedRangeCase{"-3"},
+        MalformedRangeCase{"3-"},
+        MalformedRangeCase{"1-2-3"},
+        MalformedRangeCase{"!"},
+        MalformedRangeCase{"!!1"},
+        MalformedRangeCase{"+1"},
+        MalformedRangeCase{"1.5"},
+        MalformedRangeCase{"abc"},
+        MalformedRangeCase{"First"},
+        MalformedRangeCase{"odd-even"},
+        MalformedRangeCase{"99999999999999999999999"}));
